@@ -1,6 +1,6 @@
 # Zotero 9.0.6 Manual Test Checklist
 
-Record Zotero build, OS, display scaling, PDF, starting annotation count, result, and console errors for each run. Run against an installed `dist/zotero-temporary-ink-0.1.10.xpi`.
+Record Zotero build, OS, display scaling, PDF, starting annotation count, result, and console errors for each run. Run against an installed `dist/zotero-temporary-ink-0.1.13.xpi`.
 
 | ID | Test | Expected result |
 |---|---|---|

@@ -8,7 +8,7 @@ Temporary Ink 为 Zotero 9 的 PDF 阅读器加了一层临时墨迹：画一条
 
 ## 安装
 
-1. 从[最新发布页面](https://github.com/TaNgent-Owl/Zotero_Temporary_Ink/releases/latest)下载 `zotero-temporary-ink-0.1.10.xpi`。
+1. 从[最新发布页面](https://github.com/TaNgent-Owl/Zotero_Temporary_Ink/releases/latest)下载 `zotero-temporary-ink-0.1.13.xpi`。
 2. 在 Zotero 中打开 **工具 → 附加组件**。
 3. 点击右上角的齿轮，选择 **从文件安装附加组件**，然后选中下载好的 XPI。
 4. 如果 Zotero 提示重启，按提示操作即可。
@@ -34,7 +34,7 @@ Temporary Ink 为 Zotero 9 的 PDF 阅读器加了一层临时墨迹：画一条
 
 ## 目前的不足
 
-最明显的问题是文字选择：绘制时，Zotero/PDF.js 仍可能顺手选中指针经过的 PDF 内嵌文字。我们试过拦截这类选择，但同一套拦截会让墨迹无法渲染，甚至有一次导致测试 PDF 打不开。因此 v0.1.10 保留 Zotero 原有的选择行为。被选中的只是文字，不会生成批注，也不会修改 PDF。
+最明显的问题是文字选择：绘制时，Zotero/PDF.js 仍可能顺手选中指针经过的 PDF 内嵌文字。我们试过拦截这类选择，但同一套拦截会让墨迹无法渲染，甚至有一次导致测试 PDF 打不开。因此 v0.1.13 保留 Zotero 原有的选择行为。被选中的只是文字，不会生成批注，也不会修改 PDF。
 
 其他限制：
 
@@ -70,4 +70,4 @@ npm run verify:package
 
 ## 验证状态
 
-v0.1.10 的 XPI 已在 Zotero 9.0.6 中完成安装和绘制测试。工具栏模式、`Ctrl` 快捷键以及多笔画统一淡出都经过用户确认。TypeScript 类型检查、全部 30 项自动化测试、构建和安装包校验也已通过。
+v0.1.13 的 XPI 已在 Zotero 9.0.6 中完成安装和绘制测试。工具栏模式、`Ctrl` 快捷键以及多笔画统一淡出都经过用户确认。TypeScript 类型检查、全部 37 项自动化测试、构建和安装包校验也已通过。

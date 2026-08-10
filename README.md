@@ -8,7 +8,7 @@ The plugin never writes back to Zotero or the PDF — no annotations, no attachm
 
 ## Install
 
-1. Download `zotero-temporary-ink-0.1.10.xpi` from the [latest release](https://github.com/TaNgent-Owl/Zotero_Temporary_Ink/releases/latest).
+1. Download `zotero-temporary-ink-0.1.13.xpi` from the [latest release](https://github.com/TaNgent-Owl/Zotero_Temporary_Ink/releases/latest).
 2. In Zotero, open **Tools → Add-ons**.
 3. Open the gear menu, choose **Install Add-on From File**, and select the XPI.
 4. Restart Zotero if prompted.
@@ -34,7 +34,7 @@ Settings are stored with `Zotero.Prefs` under `extensions.temporary-ink.*`; the 
 
 ## Current limitations
 
-The most visible issue is text selection: while you draw, Zotero/PDF.js may select the embedded text under the pointer. Blocking that selection was tried, but the same interception could stop ink from rendering and, in one case, prevented a test PDF from opening. v0.1.10 therefore keeps Zotero's selection behavior. The selection is harmless — it creates no annotation and modifies nothing.
+The most visible issue is text selection: while you draw, Zotero/PDF.js may select the embedded text under the pointer. Blocking that selection was tried, but the same interception could stop ink from rendering and, in one case, prevented a test PDF from opening. v0.1.13 therefore keeps Zotero's selection behavior. The selection is harmless — it creates no annotation and modifies nothing.
 
 Other limitations:
 
@@ -70,4 +70,4 @@ Delete the proxy file to unload the development build. The private Zotero Reader
 
 ## Verification status
 
-The v0.1.10 XPI installs and draws pen strokes and rectangles in Zotero 9.0.6. Toolbar modes, `Ctrl` shortcuts, and the shared multi-stroke fade were confirmed by the user. TypeScript checking, all 30 automated tests, the build, and the package verifier also pass.
+The v0.1.13 XPI installs and draws pen strokes and rectangles in Zotero 9.0.6. Toolbar modes, `Ctrl` shortcuts, and the shared multi-stroke fade were confirmed by the user. TypeScript checking, all 37 automated tests, the build, and the package verifier also pass.
