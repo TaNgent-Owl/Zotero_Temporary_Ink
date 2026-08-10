@@ -9,7 +9,4 @@ temporary-ink-pref-pen-width = 画笔宽度（像素）
 temporary-ink-pref-pen-opacity = 画笔不透明度
 temporary-ink-pref-fade-delay = 淡出前停留（毫秒）
 temporary-ink-pref-fade-duration = 淡出时间（毫秒）
-temporary-ink-pref-modifier = 绘制修饰键
-temporary-ink-pref-modifier-alt = Alt
-temporary-ink-pref-modifier-ctrl-alt = Ctrl + Alt
 temporary-ink-pref-zero-persistence = 临时墨迹不会创建 Zotero 批注，也不会修改 PDF。

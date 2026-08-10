@@ -11,9 +11,7 @@ export function resolveGestureTool(
   event: Pick<PointerEvent, "altKey" | "ctrlKey" | "shiftKey">,
 ): ToolMode {
   if (!settings.enabled) return "off";
-  const modifierActive = settings.modifier === "ctrl-alt"
-    ? event.ctrlKey && event.altKey
-    : event.altKey;
+  const modifierActive = event.ctrlKey && !event.altKey;
   if (modifierActive) return event.shiftKey ? "rectangle" : "pen";
   return mode;
 }
@@ -163,9 +161,7 @@ export class InputController {
     const settings = this.settingsProvider();
     const modeActive = settings.enabled && this.modeProvider() !== "off";
     if (event) {
-      this.modifierPressed = settings.modifier === "ctrl-alt"
-        ? event.ctrlKey && event.altKey
-        : event.altKey;
+      this.modifierPressed = event.ctrlKey && !event.altKey;
     }
     this.viewerElement.style.cursor = modeActive || (settings.enabled && this.modifierPressed)
       ? "crosshair"

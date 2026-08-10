@@ -8,7 +8,6 @@
     penOpacity: "extensions.temporary-ink.penOpacity",
     fadeDelay: "extensions.temporary-ink.fadeDelay",
     fadeDuration: "extensions.temporary-ink.fadeDuration",
-    modifier: "extensions.temporary-ink.modifier",
   };
   const fields = {
     enabled: ["temporary-ink-enabled", "checked"],
@@ -17,7 +16,6 @@
     penOpacity: ["temporary-ink-pen-opacity", "valueAsNumber"],
     fadeDelay: ["temporary-ink-fade-delay", "valueAsNumber"],
     fadeDuration: ["temporary-ink-fade-duration", "valueAsNumber"],
-    modifier: ["temporary-ink-modifier", "value"],
   };
 
   function initialize() {

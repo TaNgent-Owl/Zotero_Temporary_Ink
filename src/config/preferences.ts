@@ -1,8 +1,4 @@
-import {
-  DEFAULT_SETTINGS,
-  type InkSettings,
-  type ModifierPreference,
-} from "./constants";
+import { DEFAULT_SETTINGS, type InkSettings } from "./constants";
 
 export const PREF_KEYS = {
   enabled: "extensions.temporary-ink.enabled",
@@ -11,7 +7,6 @@ export const PREF_KEYS = {
   penOpacity: "extensions.temporary-ink.penOpacity",
   fadeDelay: "extensions.temporary-ink.fadeDelay",
   fadeDuration: "extensions.temporary-ink.fadeDuration",
-  modifier: "extensions.temporary-ink.modifier",
 } as const;
 
 function numberPreference(key: string, fallback: number, min: number, max: number): number {
@@ -20,8 +15,6 @@ function numberPreference(key: string, fallback: number, min: number, max: numbe
 }
 
 export function readSettings(): InkSettings {
-  const modifierValue = Zotero.Prefs.get(PREF_KEYS.modifier, true);
-  const modifier: ModifierPreference = modifierValue === "ctrl-alt" ? "ctrl-alt" : "alt";
   const colorValue = Zotero.Prefs.get(PREF_KEYS.penColor, true);
   const penColor = typeof colorValue === "string" && /^#[0-9a-f]{6}$/i.test(colorValue)
     ? colorValue
@@ -34,7 +27,6 @@ export function readSettings(): InkSettings {
     penOpacity: numberPreference(PREF_KEYS.penOpacity, DEFAULT_SETTINGS.penOpacity, 0.05, 1),
     fadeDelay: numberPreference(PREF_KEYS.fadeDelay, DEFAULT_SETTINGS.fadeDelay, 0, 10_000),
     fadeDuration: numberPreference(PREF_KEYS.fadeDuration, DEFAULT_SETTINGS.fadeDuration, 0, 10_000),
-    modifier,
   };
 }
 

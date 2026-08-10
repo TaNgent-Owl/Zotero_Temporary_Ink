@@ -3,7 +3,6 @@ export const PLUGIN_NAME = "Temporary Ink";
 export const DATA_ATTRIBUTE = "data-temporary-ink";
 
 export type ToolMode = "off" | "pen" | "rectangle";
-export type ModifierPreference = "alt" | "ctrl-alt";
 
 export interface InkSettings {
   enabled: boolean;
@@ -12,7 +11,6 @@ export interface InkSettings {
   penOpacity: number;
   fadeDelay: number;
   fadeDuration: number;
-  modifier: ModifierPreference;
 }
 
 export const DEFAULT_SETTINGS: Readonly<InkSettings> = Object.freeze({
@@ -22,5 +20,4 @@ export const DEFAULT_SETTINGS: Readonly<InkSettings> = Object.freeze({
   penOpacity: 0.85,
   fadeDelay: 300,
   fadeDuration: 500,
-  modifier: "alt",
 });

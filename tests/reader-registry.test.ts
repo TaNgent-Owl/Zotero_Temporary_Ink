@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS } from "../src/config/constants";
 import type { ReaderContext } from "../src/reader/reader-adapter";
 import { ReaderRegistry } from "../src/reader/reader-registry";
@@ -19,6 +19,28 @@ function context(dispose: () => void): ReaderContext {
 describe("ReaderRegistry", () => {
   beforeEach(() => {
     Object.assign(globalThis, { Zotero: { debug() {} } });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("attaches in a bootstrap scope without a global AbortController", async () => {
+    vi.stubGlobal("AbortController", undefined);
+    const reader = {};
+    const readerContext = context(() => {});
+    const adapter = { attach: async () => readerContext };
+    const controller = {
+      isDestroyed: false,
+      init() {},
+      destroy() {},
+      refreshSettings() {},
+    } as unknown as ReaderController;
+    const registry = new ReaderRegistry(
+      adapter as never,
+      () => ({ ...DEFAULT_SETTINGS }),
+      (() => controller) as never,
+    );
+
+    await expect(registry.ensure(reader)).resolves.toBe(controller);
+    registry.destroyAll();
   });
   it("disposes a context that resolves after shutdown without creating a controller", async () => {
     const attachment = deferred<ReaderContext | null>();
@@ -89,5 +111,24 @@ describe("ReaderRegistry", () => {
     const adapter = { attach: async () => { throw new Error("attach failed"); } };
     const registry = new ReaderRegistry(adapter as never, () => ({ ...DEFAULT_SETTINGS }));
     await expect(registry.ensure({})).resolves.toBeNull();
+  });
+
+  it("aborts an in-flight Reader attachment during shutdown", async () => {
+    let observedSignal: AbortSignal | undefined;
+    const adapter = {
+      attach: async (_reader: unknown, _document: Document | undefined, signal: AbortSignal) => {
+        observedSignal = signal;
+        await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }));
+        return null;
+      },
+    };
+    const registry = new ReaderRegistry(adapter as never, () => ({ ...DEFAULT_SETTINGS }));
+
+    const pending = registry.ensure({});
+    expect(observedSignal?.aborted).toBe(false);
+    registry.destroyAll();
+
+    await expect(pending).resolves.toBeNull();
+    expect(observedSignal?.aborted).toBe(true);
   });
 });

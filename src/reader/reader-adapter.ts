@@ -1,22 +1,40 @@
 import { DisposableStore, type Dispose } from "../utils/disposable";
+import type { CancellationSignal } from "../utils/cancellation";
 import { Logger } from "../utils/logger";
+
+type ViewerWindow = Window & typeof globalThis & {
+  PDFViewerApplication?: {
+    eventBus?: {
+      on(type: string, handler: () => void): void;
+      off(type: string, handler: () => void): void;
+    };
+  };
+};
 
 interface ZoteroReaderInternal {
   type?: string;
   _type?: string;
+  _iframeWindow?: Window & typeof globalThis;
   _waitForInternalReader?: () => Promise<boolean>;
   _internalReader?: {
     _primaryView?: {
-      _iframeWindow?: Window & typeof globalThis & {
-        PDFViewerApplication?: {
-          eventBus?: {
-            on(type: string, handler: () => void): void;
-            off(type: string, handler: () => void): void;
-          };
-        };
-      };
+      _iframeWindow?: ViewerWindow;
     };
   };
+}
+
+interface LocatedViewer {
+  window: ViewerWindow;
+  document: Document;
+  element: HTMLElement;
+}
+
+function locateViewer(internal: ZoteroReaderInternal): LocatedViewer | null {
+  const window = internal._internalReader?._primaryView?._iframeWindow;
+  const document = window?.document;
+  const element = document?.getElementById("viewerContainer") ?? null;
+  if (!window || !document || !(element instanceof window.HTMLElement)) return null;
+  return { window, document, element };
 }
 
 export interface ReaderContext {
@@ -38,12 +56,52 @@ export interface ReaderContext {
 export class ReaderAdapter {
   private readonly contexts = new WeakMap<object, ReaderContext>();
 
+  constructor(
+    private readonly readinessRetryDelays: readonly number[] = [0, 250, 750, 1500, 3000, 5000],
+  ) {}
+
   getOpenReaders(): readonly unknown[] {
     // Zotero 9.0.6 has no public enumeration API. This fallback is confined here.
     return Array.isArray(Zotero.Reader._readers) ? Zotero.Reader._readers : [];
   }
 
-  async attach(reader: unknown, _eventDocument?: Document): Promise<ReaderContext | null> {
+  /**
+   * Recreates the official renderToolbar append contract for a Reader whose
+   * toolbar rendered before this plugin registered its listener.
+   */
+  createExistingToolbarEvent(reader: unknown): ZoteroReaderEvent | null {
+    if (!reader || typeof reader !== "object") return null;
+    const internal = reader as ZoteroReaderInternal;
+    if ((internal.type ?? internal._type) !== "pdf") return null;
+    const toolbarWindow = internal._iframeWindow;
+    const document = toolbarWindow?.document;
+    // Verified against Zotero 9.0.6 / reader 9643fac: CustomSections is the
+    // final child of .toolbar .end, immediately before the Find button.
+    const host = document?.querySelector(".toolbar .end .custom-sections");
+    if (!document || !toolbarWindow || !(host instanceof toolbarWindow.HTMLElement)) {
+      Logger.warn("Unable to locate the existing Zotero 9.0.6 Reader toolbar");
+      return null;
+    }
+
+    return {
+      type: "renderToolbar",
+      reader,
+      doc: document,
+      params: {},
+      append: (...elements: Element[]) => {
+        const section = document.createElement("div");
+        section.className = "section";
+        section.append(...elements);
+        host.append(section);
+      },
+    };
+  }
+
+  async attach(
+    reader: unknown,
+    _eventDocument?: Document,
+    signal?: CancellationSignal,
+  ): Promise<ReaderContext | null> {
     if (!reader || typeof reader !== "object") return null;
     const existing = this.contexts.get(reader);
     if (existing) return existing;
@@ -51,21 +109,64 @@ export class ReaderAdapter {
     const internal = reader as ZoteroReaderInternal;
     if ((internal.type ?? internal._type) !== "pdf") return null;
 
+    let unavailable = signal?.aborted === true;
+    let resolveUnavailable!: () => void;
+    const unavailablePromise = new Promise<void>((resolve) => {
+      resolveUnavailable = resolve;
+      if (unavailable) resolve();
+    });
+    const markUnavailable = () => {
+      if (unavailable) return;
+      unavailable = true;
+      resolveUnavailable();
+    };
+    signal?.addEventListener("abort", markUnavailable, { once: true });
+
     try {
-      // This Zotero 9.0.6 method waits for _internalReader._primaryView initialization.
-      const ready = await internal._waitForInternalReader?.();
-      if (ready === false) {
-        Logger.warn("PDF Reader closed before its internal view became ready");
-        return null;
+      let viewerWindow: ViewerWindow | undefined;
+      let viewerDocument: Document | undefined;
+      let viewerElement: HTMLElement | null = null;
+      let readinessStarted = false;
+
+      for (const delay of this.readinessRetryDelays) {
+        if (unavailable) return null;
+        if (delay > 0) {
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const elapsed = new Promise<"elapsed">((resolve) => {
+            timer = setTimeout(() => resolve("elapsed"), delay);
+          });
+          const outcome = await Promise.race([
+            elapsed,
+            unavailablePromise.then(() => "unavailable" as const),
+          ]);
+          if (outcome === "unavailable") {
+            if (timer !== undefined) clearTimeout(timer);
+            return null;
+          }
+        }
+
+        // Check the verified DOM first. Zotero's private readiness promise can
+        // remain pending after the usable PDF iframe and viewport already exist.
+        // Awaiting it here would leave the toolbar permanently unbound.
+        const located = locateViewer(internal);
+        if (located) {
+          viewerWindow = located.window;
+          viewerDocument = located.document;
+          viewerElement = located.element;
+          break;
+        }
+
+        // Start Zotero's official waiter once as an initialization aid, but use
+        // bounded DOM polling as the attachment signal so a stale promise cannot
+        // deadlock this Reader.
+        if (!readinessStarted && typeof internal._waitForInternalReader === "function") {
+          readinessStarted = true;
+          void internal._waitForInternalReader().catch((error) => Logger.error(error));
+        }
       }
 
-      // Private dependency, Zotero 9.0.6 only. Do not move this chain outside ReaderAdapter.
-      const viewerWindow = internal._internalReader?._primaryView?._iframeWindow;
-      const viewerDocument = viewerWindow?.document;
-      // #viewerContainer is the PDF.js scroll viewport at the pinned Reader commit.
-      const viewerElement = viewerDocument?.getElementById("viewerContainer");
-      if (!viewerWindow || !viewerDocument || !(viewerElement instanceof viewerWindow.HTMLElement)) {
-        Logger.warn("Unable to locate PDF viewer in Zotero 9.0.6");
+      if (!viewerWindow || !viewerDocument || !viewerElement) {
+        Logger.warn("PDF Reader did not become ready within the attachment window");
         return null;
       }
 
@@ -121,6 +222,9 @@ export class ReaderAdapter {
       Logger.error(error);
       Logger.warn("Temporary Ink is disabled for this Reader");
       return null;
+    }
+    finally {
+      signal?.removeEventListener("abort", markUnavailable);
     }
   }
 }

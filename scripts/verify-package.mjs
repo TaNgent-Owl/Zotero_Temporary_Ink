@@ -10,7 +10,6 @@ const required = [
   "manifest.json",
   "bootstrap.js",
   "addon.js",
-  "chrome.manifest",
   "prefs.js",
   "preferences/preferences.xhtml",
   "preferences/preferences.js",
@@ -22,6 +21,9 @@ for (const file of required) {
   if (!archive[file]) throw new Error(`XPI is missing ${file}`);
 }
 for (const file of Object.keys(archive)) {
+  if (file === "chrome.manifest") {
+    throw new Error("Unsupported static chrome.manifest leaked into Zotero 7+ XPI");
+  }
   if (file.startsWith("src/") || file.startsWith("tests/") || file.endsWith(".ts")) {
     throw new Error(`Development source leaked into XPI: ${file}`);
   }
@@ -33,6 +35,9 @@ if (manifest.version !== sourceManifest.version || zotero?.id !== "temporary-ink
 }
 if (zotero.strict_min_version !== "9.0" || zotero.strict_max_version !== "9.0.*") {
   throw new Error("Unexpected Zotero compatibility range");
+}
+if (!URL.canParse(zotero.update_url) || new URL(zotero.update_url).protocol !== "https:") {
+  throw new Error("Zotero 9 requires an HTTPS applications.zotero.update_url");
 }
 const bootstrap = strFromU8(archive["bootstrap.js"]);
 for (const lifecycle of ["startup", "shutdown", "install", "uninstall"]) {

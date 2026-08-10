@@ -9,7 +9,4 @@ temporary-ink-pref-pen-width = Pen width (px)
 temporary-ink-pref-pen-opacity = Pen opacity
 temporary-ink-pref-fade-delay = Fade delay (ms)
 temporary-ink-pref-fade-duration = Fade duration (ms)
-temporary-ink-pref-modifier = Drawing modifier
-temporary-ink-pref-modifier-alt = Alt
-temporary-ink-pref-modifier-ctrl-alt = Ctrl + Alt
 temporary-ink-pref-zero-persistence = Temporary Ink never creates Zotero annotations or modifies PDFs.

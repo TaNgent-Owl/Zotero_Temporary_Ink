@@ -1,5 +1,5 @@
 import { zipSync } from "fflate";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -21,5 +21,10 @@ async function collect(directory, prefix = "") {
 await collect(buildDir);
 await mkdir(distDir, { recursive: true });
 const output = path.join(distDir, `zotero-temporary-ink-${manifest.version}.xpi`);
+for (const file of await readdir(distDir)) {
+  if (file.startsWith("zotero-temporary-ink-") && file.endsWith(".xpi") && path.join(distDir, file) !== output) {
+    await rm(path.join(distDir, file));
+  }
+}
 await writeFile(output, zipSync(files, { level: 9 }));
 console.log(output);

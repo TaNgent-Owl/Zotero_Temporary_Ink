@@ -1,4 +1,5 @@
 import type { SettingsProvider } from "../config/preferences";
+import { CancellationController, type CancellationSignal } from "../utils/cancellation";
 import { Logger } from "../utils/logger";
 import { ReaderAdapter, type ReaderContext } from "./reader-adapter";
 import { ReaderController } from "./reader-controller";
@@ -12,6 +13,7 @@ type ControllerFactory = (
 export class ReaderRegistry {
   private readonly controllers = new WeakMap<object, ReaderController>();
   private readonly pending = new WeakMap<object, Promise<ReaderController | null>>();
+  private readonly pendingAborts = new Set<CancellationController>();
   private readonly liveControllers = new Set<ReaderController>();
   private disposed = false;
 
@@ -31,14 +33,22 @@ export class ReaderRegistry {
     const inFlight = this.pending.get(reader);
     if (inFlight) return inFlight;
 
-    const promise = this.create(reader, eventDocument).catch((error) => {
+    const abortController = new CancellationController();
+    this.pendingAborts.add(abortController);
+    const promise = this.create(reader, eventDocument, abortController.signal).catch((error) => {
       Logger.error(error);
       return null;
     });
     this.pending.set(reader, promise);
     void promise.then(
-      () => this.pending.delete(reader),
-      () => this.pending.delete(reader),
+      () => {
+        this.pending.delete(reader);
+        this.pendingAborts.delete(abortController);
+      },
+      () => {
+        this.pending.delete(reader);
+        this.pendingAborts.delete(abortController);
+      },
     );
     return promise;
   }
@@ -49,6 +59,8 @@ export class ReaderRegistry {
 
   destroyAll(): void {
     this.disposed = true;
+    for (const abortController of this.pendingAborts) abortController.abort();
+    this.pendingAborts.clear();
     for (const controller of [...this.liveControllers]) controller.destroy();
     this.liveControllers.clear();
   }
@@ -56,8 +68,9 @@ export class ReaderRegistry {
   private async create(
     reader: object,
     eventDocument: Document | undefined,
+    signal: CancellationSignal,
   ): Promise<ReaderController | null> {
-    const context = await this.adapter.attach(reader, eventDocument);
+    const context = await this.adapter.attach(reader, eventDocument, signal);
     if (!context) return null;
     if (this.disposed) {
       context.dispose();

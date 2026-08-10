@@ -16,6 +16,10 @@ describe("toolbar lifecycle", () => {
     const listeners = new Set<(value: ToolMode) => void>();
     const toolbarSlot = new DisposableSlot<ToolbarControl>();
     const controller = {
+      setMode(nextMode: ToolMode) {
+        mode = nextMode;
+        for (const listener of listeners) listener(mode);
+      },
       cycleMode() {
         clicks++;
         mode = mode === "off" ? "pen" : mode === "pen" ? "rectangle" : "off";
@@ -38,16 +42,29 @@ describe("toolbar lifecycle", () => {
       append: (...elements: Element[]) => dom.window.document.body.append(...elements),
     } as unknown as ZoteroReaderEvent;
 
-    const first = mountToolbar(event, controller, "resource://temporary-ink/");
+    const first = mountToolbar(event);
     expect(first).not.toBeNull();
+    expect(first!.element.disabled).toBe(false);
+    expect(first!.element.getAttribute("aria-busy")).toBe("true");
+    first!.element.click();
+    expect(first!.element.dataset.mode).toBe("pen");
+    expect(clicks).toBe(0);
+    first!.bind(controller);
+    expect(first!.element.disabled).toBe(false);
+    expect(first!.element.hasAttribute("aria-busy")).toBe(false);
+    expect(mode).toBe("pen");
+    expect(first!.element.querySelector('svg[viewBox="0 0 20 20"]')).not.toBeNull();
+    expect(first!.element.querySelectorAll('svg [fill="currentColor"]').length).toBe(3);
     first!.element.click();
     expect(clicks).toBe(1);
-    expect(first!.element.dataset.mode).toBe("pen");
+    expect(first!.element.dataset.mode).toBe("rectangle");
+    expect(first!.element.classList.contains("active")).toBe(true);
     first!.element.remove();
     expect(dom.window.document.querySelector('[data-temporary-ink="toolbar"]')).toBeNull();
 
-    const second = mountToolbar(event, controller, "resource://temporary-ink/");
+    const second = mountToolbar(event);
     expect(second).not.toBeNull();
+    second!.bind(controller);
     expect(listeners.size).toBe(1);
     expect(second!.element).not.toBe(first!.element);
     first!.element.click();
@@ -64,6 +81,7 @@ describe("toolbar lifecycle", () => {
     const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>");
     const controller = {
       cycleMode() {},
+      setMode() {},
       subscribeMode(listener: (value: ToolMode) => void) {
         listener("off");
         return () => {};
@@ -75,8 +93,31 @@ describe("toolbar lifecycle", () => {
       doc: dom.window.document,
       append: (...elements: Element[]) => dom.window.document.body.append(...elements),
     } as unknown as ZoteroReaderEvent;
-    const control = mountToolbar(event, controller, "resource://temporary-ink/");
-    expect(mountToolbar(event, controller, "resource://temporary-ink/")).toBeNull();
+    const control = mountToolbar(event);
+    control!.bind(controller);
+    expect(mountToolbar(event)).toBeNull();
+    control!.dispose();
+  });
+
+  it("calls Zotero's append hook synchronously before controller binding", () => {
+    const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>");
+    let callbackActive = true;
+    let appended = false;
+    const event = {
+      doc: dom.window.document,
+      append: (...elements: Element[]) => {
+        expect(callbackActive).toBe(true);
+        appended = true;
+        dom.window.document.body.append(...elements);
+      },
+    } as unknown as ZoteroReaderEvent;
+
+    const control = mountToolbar(event);
+    callbackActive = false;
+
+    expect(appended).toBe(true);
+    expect(control!.element.disabled).toBe(false);
+    expect(control!.element.getAttribute("aria-busy")).toBe("true");
     control!.dispose();
   });
 });

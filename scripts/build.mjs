@@ -13,7 +13,6 @@ await mkdir(output, { recursive: true });
 const copyTargets = [
   ["manifest.json", "manifest.json"],
   ["bootstrap.js", "bootstrap.js"],
-  ["chrome.manifest", "chrome.manifest"],
   ["assets", "assets"],
   ["locale", "locale"],
   ["preferences", "preferences"],

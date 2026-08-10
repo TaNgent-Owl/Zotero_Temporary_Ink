@@ -6,7 +6,7 @@ import { InkModel } from "../src/ink/ink-model";
 import type { InkRenderer } from "../src/ink/ink-renderer";
 
 describe("gesture claiming", () => {
-  const keys = (altKey = false, shiftKey = false, ctrlKey = false) => ({
+  const keys = (ctrlKey = false, shiftKey = false, altKey = false) => ({
     altKey,
     shiftKey,
     ctrlKey,
@@ -21,19 +21,18 @@ describe("gesture claiming", () => {
     expect(resolveGestureTool({ ...DEFAULT_SETTINGS }, "rectangle", keys())).toBe("rectangle");
   });
 
-  it("uses Alt modifiers as an off-mode override", () => {
+  it("uses Ctrl as an off-mode override", () => {
     expect(resolveGestureTool({ ...DEFAULT_SETTINGS }, "off", keys(true))).toBe("pen");
     expect(resolveGestureTool({ ...DEFAULT_SETTINGS }, "off", keys(true, true))).toBe("rectangle");
   });
 
-  it("supports the Ctrl+Alt preference and respects disablement", () => {
-    const settings = { ...DEFAULT_SETTINGS, modifier: "ctrl-alt" as const };
-    expect(resolveGestureTool(settings, "off", keys(true))).toBe("off");
-    expect(resolveGestureTool(settings, "off", keys(true, false, true))).toBe("pen");
-    expect(resolveGestureTool({ ...settings, enabled: false }, "pen", keys(true, false, true))).toBe("off");
+  it("does not claim Alt or Ctrl+Alt and respects disablement", () => {
+    expect(resolveGestureTool({ ...DEFAULT_SETTINGS }, "off", keys(false, false, true))).toBe("off");
+    expect(resolveGestureTool({ ...DEFAULT_SETTINGS }, "off", keys(true, false, true))).toBe("off");
+    expect(resolveGestureTool({ ...DEFAULT_SETTINGS, enabled: false }, "pen", keys(true))).toBe("off");
   });
 
-  it("leaves ordinary DOM drag untouched and fully owns only an Alt gesture", () => {
+  it("leaves ordinary and Alt DOM drags untouched and fully owns only a Ctrl gesture", () => {
     Object.assign(globalThis, { Zotero: { debug() {} } });
     const dom = new JSDOM(
       "<!doctype html><html><body><div id=\"viewerContainer\"></div></body></html>",
@@ -61,13 +60,14 @@ describe("gesture claiming", () => {
     );
     input.init();
 
-    const pointer = (type: string, pointerId: number, altKey = false) => {
+    const pointer = (type: string, pointerId: number, ctrlKey = false, altKey = false) => {
       const event = new dom.window.MouseEvent(type, {
         bubbles: true,
         cancelable: true,
         button: 0,
         clientX: 10,
         clientY: 20,
+        ctrlKey,
         altKey,
       });
       Object.defineProperties(event, {
@@ -83,12 +83,17 @@ describe("gesture claiming", () => {
     expect(ordinary.defaultPrevented).toBe(false);
     expect(model.hasVisibleStrokes).toBe(false);
 
-    const down = pointer("pointerdown", 2, true);
+    const alt = pointer("pointerdown", 2, false, true);
+    viewer.dispatchEvent(alt);
+    expect(alt.defaultPrevented).toBe(false);
+    expect(model.hasActiveStroke).toBe(false);
+
+    const down = pointer("pointerdown", 3, true);
     viewer.dispatchEvent(down);
     expect(down.defaultPrevented).toBe(true);
     expect(model.hasActiveStroke).toBe(true);
     expect(viewer.style.cursor).toBe("crosshair");
-    const up = pointer("pointerup", 2, true);
+    const up = pointer("pointerup", 3, true);
     viewer.dispatchEvent(up);
     expect(up.defaultPrevented).toBe(true);
     expect(model.hasActiveStroke).toBe(false);
@@ -113,7 +118,7 @@ describe("gesture claiming", () => {
 
     input.destroy();
     expect(viewer.style.cursor).toBe("");
-    const afterDestroy = pointer("pointerdown", 3, true);
+    const afterDestroy = pointer("pointerdown", 4, true);
     viewer.dispatchEvent(afterDestroy);
     expect(afterDestroy.defaultPrevented).toBe(false);
     expect(invalidate).toHaveBeenCalled();

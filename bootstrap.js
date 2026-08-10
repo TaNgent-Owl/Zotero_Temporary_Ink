@@ -4,10 +4,9 @@ var temporaryInkAddon;
 
 function install() {}
 
-async function startup({ rootURI }) {
+async function startup({ rootURI, version }) {
   await Zotero.initializationPromise;
-  await Zotero.uiReadyPromise;
-  Services.scriptloader.loadSubScript(rootURI + "addon.js");
+  Services.scriptloader.loadSubScript(rootURI + "addon.js?v=" + encodeURIComponent(version));
   temporaryInkAddon = TemporaryInk.createAddon();
   await temporaryInkAddon.startup(rootURI);
 }
