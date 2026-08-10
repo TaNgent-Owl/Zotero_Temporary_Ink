@@ -1,13 +1,13 @@
 # Zotero 9.0.6 Manual Test Checklist
 
-Record Zotero build, OS, display scaling, PDF, starting annotation count, result, and console errors for each run. Run against an installed `dist/zotero-temporary-ink-0.1.9.xpi`.
+Record Zotero build, OS, display scaling, PDF, starting annotation count, result, and console errors for each run. Run against an installed `dist/zotero-temporary-ink-0.1.10.xpi`.
 
 | ID | Test | Expected result |
 |---|---|---|
 | 01 | Toolbar OFF; plain left-drag PDF text | Text selects normally; plugin does not consume the gesture. |
 | 02 | `Ctrl` + left-drag | Red pen follows the pointer, holds about 300 ms, fades over about 500 ms. |
 | 03 | `Ctrl+Shift` + left-drag | A live rectangle appears and follows the same fade lifecycle. |
-| 04 | Draw A, B, C rapidly | All three coexist and expire independently. |
+| 04 | Draw A, wait until it begins fading, then start B and continue drawing for more than 800 ms | A immediately returns to full opacity and remains visible while B is active; after B ends, A and B hold and fade together. |
 | 05 | Draw rapidly for 10 seconds | No stuck gesture, large jump, persistent CPU load, or obvious Reader slowdown. |
 | 06 | Drag from a page to the viewport edge and release | Pointer capture ends the gesture; subsequent clicks are normal. |
 | 07 | Press Escape during/after drawing | Active and visible ink clears; Escape is untouched when no ink exists. |

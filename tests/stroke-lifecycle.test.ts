@@ -50,24 +50,39 @@ describe("InkModel", () => {
     });
   });
 
-  it("keeps overlapping strokes on independent clocks", () => {
+  it("restarts one shared fade clock after the last stroke is released", () => {
     const model = new InkModel();
-    model.startPen(point(0, 0, 0));
+    const pen = model.startPen(point(0, 0, 0));
     model.releaseActive(100);
-    model.startRectangle(point(2, 2, 200));
-    model.releaseActive(300);
-    model.advance(950, 300, 500);
-    expect(model.all).toHaveLength(1);
-    expect(model.all[0].type).toBe("rectangle");
+    expect(model.opacityAt(pen, 650, 300, 500)).toBeCloseTo(0.5);
+
+    const rectangle = model.startRectangle(point(2, 2, 650));
+    expect(model.opacityAt(pen, 650, 300, 500)).toBe(1);
+    expect(model.advance(10_000, 300, 500)).toBe(false);
+    expect(model.all).toHaveLength(2);
+    expect(model.opacityAt(pen, 10_000, 300, 500)).toBe(1);
+    expect(model.animationTiming(10_000, 300, 500)).toEqual({
+      fading: false,
+      nextFadeAt: null,
+    });
+    model.releaseActive(10_000);
+
+    expect(model.opacityAt(pen, 10_300, 300, 500)).toBe(1);
+    expect(model.opacityAt(rectangle, 10_300, 300, 500)).toBe(1);
+    expect(model.opacityAt(pen, 10_550, 300, 500)).toBeCloseTo(0.5);
+    expect(model.opacityAt(rectangle, 10_550, 300, 500)).toBeCloseTo(0.5);
+    expect(model.advance(10_801, 300, 500)).toBe(false);
+    expect(model.all).toHaveLength(0);
   });
 
   it("cancels only the active stroke and clears everything on demand", () => {
     const model = new InkModel();
-    model.startPen(point(0, 0, 0));
+    const pen = model.startPen(point(0, 0, 0));
     model.releaseActive(10);
     model.startRectangle(point(1, 1, 20));
-    model.cancelActive();
+    model.cancelActive(30);
     expect(model.all).toHaveLength(1);
+    expect(model.opacityAt(pen, 580, 300, 500)).toBeCloseTo(0.5);
     model.clear();
     expect(model.hasVisibleStrokes).toBe(false);
   });

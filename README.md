@@ -7,7 +7,7 @@ Temporary Ink adds a short-lived pen and rectangle overlay to the Zotero PDF Rea
 - `Ctrl` + left-drag: transient pen
 - `Ctrl+Shift` + left-drag: transient rectangle
 - Toolbar cycle: OFF → PEN → RECTANGLE → OFF
-- Multiple overlapping strokes with independent 300 ms hold and 500 ms fade
+- Visible strokes stay fully opaque while another stroke is being drawn, then share one 300 ms hold and 500 ms fade after the last stroke ends
 - Escape clears visible ink; scroll, zoom, rotation, and resize clear stale viewport ink
 - HiDPI canvas sizing and isolated per-Reader lifecycle
 - English and Simplified Chinese preferences
@@ -20,9 +20,9 @@ The overlay is intentionally absent after about 800 ms. A verified Zotero 9.0.6 
 
 1. Run `npm install` and `npm run package`.
 2. In Zotero, choose **Tools → Add-ons → Install Add-on From File**.
-3. Select `dist/zotero-temporary-ink-0.1.9.xpi`.
+3. Select `dist/zotero-temporary-ink-0.1.10.xpi`.
 
-The manifest supports Zotero 9.0 through 9.0.x. Version 0.1.1 added the Zotero-required update URL. Versions 0.1.2–0.1.4 fixed toolbar restoration and added the native-style icon. Versions 0.1.5–0.1.7 hardened Reader readiness, and 0.1.8 version-busts bundled scripts during upgrades. Version 0.1.9 removes the bootstrap-incompatible `AbortController` dependency and is the first user-verified stable baseline. The complete manual matrix remains pending.
+The manifest supports Zotero 9.0 through 9.0.x. Version 0.1.9 remains the first user-verified stable baseline. Version 0.1.10 changes overlapping strokes to one shared fade cycle that starts after the final stroke ends. The complete manual matrix remains pending.
 
 ## Usage and shortcuts
 
@@ -63,6 +63,6 @@ The private Reader dependency and exact pinned sources are documented in `docs/z
 - Viewport coordinates are not PDF-page coordinates
 - Ink intentionally disappears on scroll, resize, zoom, and rotation
 - Offline typecheck, 30 tests, XPI build, and package verification pass
-- Zotero 9.0.6 runtime validation confirms that 0.1.9 installs, the toolbar cycles modes, and pen/rectangle drawing works through both toolbar modes and Ctrl shortcuts
+- Zotero 9.0.6 runtime validation confirms that the 0.1.9 stable baseline installs, the toolbar cycles modes, and pen/rectangle drawing works through both toolbar modes and Ctrl shortcuts; the grouped fade behavior in 0.1.10 still needs a short runtime check
 - Annotation-count, scaling, multi-Reader, and cleanup stress validation remains pending
 - Runtime testing must remain inside the disposable profile and data directory. Do not touch the normal Zotero profile or library

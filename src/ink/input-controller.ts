@@ -198,7 +198,7 @@ export class InputController {
   }
 
   private cancelGesture(): void {
-    this.model.cancelActive();
+    this.model.cancelActive(this.window.performance.now());
     this.finishGesture();
   }
 

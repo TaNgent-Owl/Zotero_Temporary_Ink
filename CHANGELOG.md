@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.10 - 2026-08-10
+
+### Changed
+
+- Keep all visible strokes fully opaque whenever a new pen or rectangle gesture begins.
+- Start one shared hold-and-fade countdown only after the latest gesture ends, so multi-stroke diagrams disappear as a group.
+- Restart the shared countdown safely when an in-progress gesture is cancelled.
+
+### Verification
+
+- Added lifecycle coverage for reviving a partially faded stroke, keeping a group visible during a long gesture, synchronized opacity, grouped deletion, and cancellation.
+
 ## 0.1.9 - 2026-08-10 (Initial Stable)
 
 ### Features

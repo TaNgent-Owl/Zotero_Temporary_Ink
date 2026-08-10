@@ -45,7 +45,8 @@ export class InkModel {
   }
 
   startPen(point: Point): PenStroke {
-    this.cancelActive();
+    this.cancelActive(point.t);
+    this.pauseVisibleGroup();
     const stroke: PenStroke = {
       id: this.nextID++,
       type: "pen",
@@ -59,7 +60,8 @@ export class InkModel {
   }
 
   startRectangle(point: Point): RectangleStroke {
-    this.cancelActive();
+    this.cancelActive(point.t);
+    this.pauseVisibleGroup();
     const stroke: RectangleStroke = {
       id: this.nextID++,
       type: "rectangle",
@@ -92,17 +94,17 @@ export class InkModel {
   releaseActive(now: number): Stroke | null {
     const stroke = this.active();
     if (!stroke) return null;
-    stroke.releasedAt = now;
-    stroke.state = "holding";
+    this.releaseVisibleGroup(now);
     this.activeStrokeID = null;
     return stroke;
   }
 
-  cancelActive(): void {
+  cancelActive(now: number): void {
     if (this.activeStrokeID === null) return;
     const activeID = this.activeStrokeID;
     this.strokes = this.strokes.filter((stroke) => stroke.id !== activeID);
     this.activeStrokeID = null;
+    this.releaseVisibleGroup(now);
   }
 
   clear(): void {
@@ -149,5 +151,19 @@ export class InkModel {
 
   private active(): Stroke | undefined {
     return this.strokes.find((stroke) => stroke.id === this.activeStrokeID);
+  }
+
+  private pauseVisibleGroup(): void {
+    for (const stroke of this.strokes) {
+      delete stroke.releasedAt;
+      stroke.state = "holding";
+    }
+  }
+
+  private releaseVisibleGroup(now: number): void {
+    for (const stroke of this.strokes) {
+      stroke.releasedAt = now;
+      stroke.state = "holding";
+    }
   }
 }

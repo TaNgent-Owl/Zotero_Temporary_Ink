@@ -20,7 +20,7 @@ InputController --> InkModel --> InkRenderer --> DPR Canvas
 - `ReaderAdapter` identifies PDF readers, waits for the nested view, locates `#viewerContainer`, subscribes to PDF.js view changes, and reports document teardown. All Zotero private fields live here.
 - `ReaderRegistry` gives each Reader object one controller. A pending WeakMap prevents duplicate async initialization when `renderToolbar` fires repeatedly.
 - `InputController` uses capture-phase Pointer Events but consumes an event only after an enabled toolbar mode or the Ctrl override claims a primary mouse gesture. Cancelling that pointerdown suppresses Zotero's compatibility mousedown; OFF-mode plain drag, Alt, and Ctrl+Alt are untouched. Pen arbitration remains a v0.2 extension point.
-- `InkModel` owns point sampling, overlapping strokes, release time, fade state, and deletion.
+- `InkModel` owns point sampling, overlapping strokes, the shared group release clock, fade state, and deletion. Starting a new stroke pauses and restores every visible stroke; releasing the last stroke starts one hold/fade cycle for the whole visible group.
 - `InkRenderer` owns the pointer-transparent fixed canvas, client-to-local coordinates, DPR backing size, midpoint smoothing, and demand-driven animation.
 - `Toolbar` only cycles controller mode. Preferences are read through `Zotero.Prefs` and observers refresh active controllers.
 
