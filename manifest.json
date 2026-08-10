@@ -1,0 +1,18 @@
+{
+  "manifest_version": 2,
+  "name": "Zotero Temporary Ink",
+  "version": "0.1.0",
+  "description": "Draw short-lived visual marks in Zotero's PDF Reader without creating annotations.",
+  "author": "Temporary Ink contributors",
+  "icons": {
+    "48": "assets/temporary-ink.svg",
+    "96": "assets/temporary-ink.svg"
+  },
+  "applications": {
+    "zotero": {
+      "id": "temporary-ink@local",
+      "strict_min_version": "9.0",
+      "strict_max_version": "9.0.*"
+    }
+  }
+}

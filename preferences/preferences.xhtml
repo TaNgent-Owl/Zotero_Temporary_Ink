@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<html:div xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+          xmlns:html="http://www.w3.org/1999/xhtml"
+          id="temporary-ink-preferences">
+  <linkset>
+    <html:link rel="localization" href="temporary-ink.ftl"/>
+  </linkset>
+  <html:section class="temporary-ink-pref-grid">
+    <html:h2 data-l10n-id="temporary-ink-pref-heading">Temporary Ink</html:h2>
+    <html:label class="full-row">
+      <html:input id="temporary-ink-enabled" type="checkbox"/>
+      <html:span data-l10n-id="temporary-ink-pref-enable">Enable Temporary Ink</html:span>
+    </html:label>
+
+    <html:label for="temporary-ink-pen-color" data-l10n-id="temporary-ink-pref-pen-color">Pen color</html:label>
+    <html:input id="temporary-ink-pen-color" type="color"/>
+    <html:label for="temporary-ink-pen-width" data-l10n-id="temporary-ink-pref-pen-width">Pen width</html:label>
+    <html:input id="temporary-ink-pen-width" type="number" min="1" max="20" step="0.5"/>
+    <html:label for="temporary-ink-pen-opacity" data-l10n-id="temporary-ink-pref-pen-opacity">Pen opacity</html:label>
+    <html:input id="temporary-ink-pen-opacity" type="number" min="0.05" max="1" step="0.05"/>
+    <html:label for="temporary-ink-fade-delay" data-l10n-id="temporary-ink-pref-fade-delay">Fade delay</html:label>
+    <html:input id="temporary-ink-fade-delay" type="number" min="0" max="10000" step="50"/>
+    <html:label for="temporary-ink-fade-duration" data-l10n-id="temporary-ink-pref-fade-duration">Fade duration</html:label>
+    <html:input id="temporary-ink-fade-duration" type="number" min="0" max="10000" step="50"/>
+    <html:label for="temporary-ink-modifier" data-l10n-id="temporary-ink-pref-modifier">Drawing modifier</html:label>
+    <html:select id="temporary-ink-modifier">
+      <html:option value="alt" data-l10n-id="temporary-ink-pref-modifier-alt">Alt</html:option>
+      <html:option value="ctrl-alt" data-l10n-id="temporary-ink-pref-modifier-ctrl-alt">Ctrl + Alt</html:option>
+    </html:select>
+    <html:p class="full-row note" data-l10n-id="temporary-ink-pref-zero-persistence">
+      Temporary Ink never creates Zotero annotations or modifies PDFs.
+    </html:p>
+  </html:section>
+</html:div>
