@@ -1,34 +1,36 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+## Project structure
 
-This repository is specification-first: `DevDoc.md` defines the MVP and remains authoritative until implementation. Follow its proposed layout: TypeScript in `src/`, unit tests in `tests/`, localization in `locale/`, preference UI in `preferences/`, static files in `assets/`, and investigation and manual-test records in `docs/`. Build artifacts belong in `dist/` and should not be committed.
+The plugin source lives in `src/`. Keep Zotero Reader internals inside `src/reader/reader-adapter.ts`; controllers coordinate lifecycle and input, while `src/ink/` owns geometry, stroke state, Canvas rendering, and pointer handling. Toolbar and preference code belongs in `src/ui/` and shared settings in `src/config/`.
 
-Keep responsibilities separated. `src/reader/reader-adapter.ts` owns all Zotero Reader DOM and internal-API knowledge; `InputController` handles pointer gestures; `InkModel` owns stroke state and timing; `InkRenderer` owns Canvas drawing, DPR scaling, and fading. Do not collapse these into a single reader module.
+Static extension files are kept at the repository root and in `assets/`, `locale/`, and `preferences/`. Automated tests live in `tests/`; investigation notes, architecture decisions, and the manual checklist live in `docs/`. Generated output goes to `build/` and `dist/` and must not be committed.
 
-## Build, Test, and Development Commands
+## Build and test commands
 
-The package scaffold is not present yet. Once `package.json` is added, provide and document these scripts:
+Use Node.js 22.13 or newer.
 
-- `npm install` — install development dependencies.
-- `npm run build` — compile the plugin.
-- `npm test` — run automated unit tests.
-- `npm run package` — create `dist/zotero-temporary-ink-<version>.xpi`.
+- `npm install` installs development dependencies.
+- `npm run typecheck` checks TypeScript without emitting files.
+- `npm test` runs the Vitest suite.
+- `npm run build` creates the unpacked extension in `build/`.
+- `npm run package` builds `dist/zotero-temporary-ink-<version>.xpi`.
+- `npm run verify:package` checks the XPI layout and manifest metadata.
 
-Install the XPI through Zotero's **Tools → Add-ons → Install Add-on From File**. Keep commands synchronized with `README.md` if the chosen template uses different names.
+Install test builds through Zotero's **Tools → Add-ons → Install Add-on From File**.
 
-## Coding Style & Naming Conventions
+## Code style
 
-Use TypeScript with two-space indentation, semicolons, and focused modules. Name files in kebab-case (`reader-controller.ts`), classes and types in PascalCase, and functions and variables in camelCase. Centralize constants and preferences under `src/config/`. Route diagnostics through `Logger.debug`, `Logger.warn`, and `Logger.error`; avoid logging every `pointermove`. Brittle selectors and direct `_iframeWindow` access are allowed only inside `ReaderAdapter` and must include a Zotero-version note.
+Use TypeScript with two-space indentation and semicolons. Name files in kebab-case, classes and types in PascalCase, and functions and variables in camelCase. Keep modules focused. Route diagnostics through `Logger`; do not log high-frequency pointer movement. Direct `_iframeWindow` access and verified Reader selectors belong only in `ReaderAdapter`.
 
-## Testing Guidelines
+## Testing
 
-Name unit tests `*.test.ts`; prioritize geometry and stroke-lifecycle coverage. Record interactive checks in `docs/manual-test.md`. Before merging, verify text selection, pen and rectangle gestures, Escape, scrolling, zoom, Windows scaling, multiple readers, disable/re-enable cleanup, and native Zotero annotation tools. Temporary drawing must create zero annotations and leave no duplicate canvases, listeners, or timers.
+Name tests `*.test.ts`. Add automated coverage for model, geometry, input arbitration, and cleanup changes. Record Zotero Desktop checks in `docs/manual-test.md`. Drawing must never create annotations or leave duplicate canvases, listeners, timers, or toolbar controls.
 
-## Commit & Pull Request Guidelines
+## Commits and pull requests
 
-There is no Git history yet. Use small Conventional Commit-style changes such as `feat: render temporary pen strokes`, `fix: harden reader lifecycle cleanup`, and `docs: document Zotero 9 reader architecture`. Pull requests should summarize behavior, link an issue when available, list automated and manual results, note the tested Zotero version, and include screenshots or a short recording for visible UI changes.
+Use concise Conventional Commit messages such as `fix: restart grouped fade timer` or `docs: update installation guide`. Pull requests should describe visible behavior, list automated and manual results, name the tested Zotero version, and include a screenshot or recording when the UI changes.
 
-## Security & Compatibility
+## Safety and compatibility
 
-Never modify PDFs, attachments, Zotero's database, installation files, or built-in CSS. Prefer public Reader lifecycle events, isolate unavoidable internals, and fail safely without breaking the Reader.
+Do not modify PDFs, attachments, Zotero's database, built-in CSS, or installation files. Isolate unavoidable private APIs, clean up every listener and DOM node on shutdown, and fail without breaking the Reader.

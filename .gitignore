@@ -3,5 +3,10 @@ build/
 dist/
 coverage/
 runtime-tests/
+tmp/
 *.log
 .claude/
+.codegraph/
+
+# Local product notes; not part of the public repository.
+DevDoc.md
