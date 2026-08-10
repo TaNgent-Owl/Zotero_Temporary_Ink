@@ -2,41 +2,55 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-Temporary Ink adds a short-lived pen and rectangle overlay to the Zotero PDF Reader. It is meant for pointing, underlining, circling, and framing while reading. **Temporary Ink does not create Zotero annotations, modify PDFs, touch attachments, or participate in sync.**
+Temporary Ink is for the moments when you want to point at something in a PDF without keeping it. Draw a line, circle a phrase, or frame a paragraph; the mark disappears shortly after you finish.
 
-## Features
+Nothing is written back to Zotero or the PDF. The plugin does not create annotations, change attachments, or add anything to sync.
 
-- `Ctrl` + left-drag: transient pen
-- `Ctrl+Shift` + left-drag: transient rectangle
-- Toolbar cycle: OFF → PEN → RECTANGLE → OFF
-- Visible strokes stay fully opaque while another stroke is being drawn, then share one 300 ms hold and 500 ms fade after the last stroke ends
-- Escape clears visible ink; scroll, zoom, rotation, and resize clear stale viewport ink
-- HiDPI canvas sizing and isolated per-Reader lifecycle
-- English and Simplified Chinese preferences
+## Install
 
-## Screenshots
+1. Download `zotero-temporary-ink-0.1.10.xpi` from the [latest release](https://github.com/TaNgent-Owl/Zotero_Temporary_Ink/releases/latest).
+2. In Zotero, open **Tools → Add-ons**.
+3. Open the gear menu, choose **Install Add-on From File**, and select the XPI.
+4. Restart Zotero if it asks you to.
 
-The overlay is intentionally absent after about 800 ms. A verified Zotero 9.0.6 runtime capture will be added after completing the manual checklist in `docs/manual-test.md`.
+The current build supports Zotero 9.0–9.0.x and has been tested with Zotero 9.0.6. If you need to roll back, v0.1.9 remains available as the previous stable release.
 
-## Installation
+## Drawing
 
-1. Download `zotero-temporary-ink-0.1.10.xpi` from the [v0.1.10 release](https://github.com/TaNgent-Owl/Zotero_Temporary_Ink/releases/tag/v0.1.10).
-2. In Zotero, choose **Tools → Add-ons → Install Add-on From File**.
-3. Select the downloaded XPI and restart Zotero if prompted.
+- Hold `Ctrl` and drag with the left mouse button for the pen.
+- Hold `Ctrl+Shift` and drag for a rectangle.
+- Click the toolbar button to cycle through OFF, PEN, and RECTANGLE. In PEN or RECTANGLE mode, plain left-drag draws repeatedly.
+- Press `Esc` to clear the current drawing. When no ink is visible, the plugin leaves `Esc` alone.
 
-The manifest supports Zotero 9.0 through 9.0.x. Version 0.1.9 remains the first user-verified stable baseline. Version 0.1.10 changes overlapping strokes to one shared fade cycle that starts after the final stroke ends. The complete manual matrix remains pending.
+Marks drawn close together are treated as one sketch. Starting another stroke restores every mark that is still visible and pauses the fade timer. Once the last stroke ends, the whole sketch stays for 300 ms and then fades over 500 ms.
 
-## Usage and shortcuts
-
-Keep the toolbar mode OFF for normal selection and occasional Ctrl drawing. Select PEN or RECTANGLE to let plain left-drag draw repeatedly. `Ctrl` always selects the pen in OFF mode; add Shift for a rectangle. Escape is consumed only while Temporary Ink has an active or visible stroke.
-
-Alt and Ctrl+Alt are deliberately left to Zotero and Windows and are never claimed by Temporary Ink.
+Keep the toolbar mode OFF when you want Zotero's usual text selection. `Alt` and `Ctrl+Alt` are not used by this plugin.
 
 ## Preferences
 
-Zotero Preferences → Temporary Ink configures enablement, color, width, opacity, fade delay, and fade duration. Values use `Zotero.Prefs` under `extensions.temporary-ink.*`; local/session storage is not used.
+Open **Zotero Settings → Temporary Ink** to change the pen color, width, opacity, hold time, or fade duration. You can also disable the plugin from this pane.
+
+Settings are stored with `Zotero.Prefs` under `extensions.temporary-ink.*`. The plugin does not use browser local storage.
+
+## Screenshot
+
+There is no runtime screenshot yet. The marks are deliberately brief, so a useful capture needs to show the pointer and active stroke together. A verified Zotero 9.0.6 capture will be added after the remaining manual checks.
+
+## Current limitations
+
+The most noticeable issue is text selection. While you draw, Zotero/PDF.js may also select embedded text under the pointer. We tried blocking that selection, but the same interception could stop ink from rendering and, in one case, prevent a test PDF from opening. v0.1.10 therefore keeps Zotero's selection behavior. The selection is harmless: it does not create an annotation or modify the PDF.
+
+Other limits are straightforward:
+
+- PDF only; mouse input is the tested path.
+- In Zotero split view, only the primary view is supported.
+- Ink uses viewport coordinates rather than PDF-page coordinates.
+- Scrolling, zooming, rotating, or resizing clears the current drawing.
+- Annotation-count, Windows scaling, multi-Reader, and repeated enable/disable stress checks are not yet complete.
 
 ## Development
+
+Node.js 22.13 or newer is required.
 
 ```powershell
 npm install
@@ -47,25 +61,17 @@ npm run package
 npm run verify:package
 ```
 
-`npm run dev` rebuilds the TypeScript bundle on change. For a Windows extension proxy:
+`npm run package` writes the XPI to `dist/`. `npm run dev` watches the TypeScript sources and rebuilds the unpacked plugin in `build/`.
 
-1. Open Zotero's active profile directory from **Help → Troubleshooting Information → Profile Directory**.
-2. Under its `extensions` directory, create a plain text file named exactly `temporary-ink@local` (no extension).
-3. Put the absolute path to this repository's `build` directory on the file's only line, for example `D:\PPs\Zotero_Temporary_Ink[plugin]\build`.
-4. Start `npm run dev`, restart Zotero once to load the proxy, and thereafter disable/re-enable the add-on after bundle changes. Reopen affected Reader tabs when testing document lifecycle code.
+For a Windows extension proxy:
 
-The proxy changes only the development profile. Remove that proxy file to unload the source build.
+1. In Zotero, open **Help → Troubleshooting Information → Profile Directory**.
+2. Create a plain-text file named `temporary-ink@local` (with no extension) inside the profile's `extensions` directory.
+3. Put the absolute path to this repository's `build` directory on the only line, for example `D:\PPs\Zotero_Temporary_Ink[plugin]\build`.
+4. Run `npm run dev`, then restart Zotero once. After later rebuilds, disable and re-enable the add-on; reopen PDF tabs when testing Reader lifecycle changes.
 
-The private Reader dependency and exact pinned sources are documented in `docs/zotero-reader-investigation.md`. All such access must remain in `src/reader/reader-adapter.ts`.
+Delete the proxy file to unload the development build. Private Zotero Reader dependencies are documented in [`docs/zotero-reader-investigation.md`](docs/zotero-reader-investigation.md) and must stay isolated in `src/reader/reader-adapter.ts`.
 
-## Known limitations
+## What has been checked
 
-- PDF only; mouse-first MVP
-- Primary view only when Zotero split view is active
-- Viewport coordinates are not PDF-page coordinates
-- Drawing a pen stroke or rectangle may also select embedded PDF text beneath the gesture. Selection suppression experiments caused ink-rendering and PDF-opening regressions, so v0.1.10 preserves Zotero/PDF.js selection behavior for stability; the selection does not create an annotation or modify the PDF.
-- Ink intentionally disappears on scroll, resize, zoom, and rotation
-- Offline typecheck, 30 tests, XPI build, and package verification pass
-- Zotero 9.0.6 runtime validation confirms that v0.1.10 installs, the toolbar cycles modes, pen/rectangle drawing works through both toolbar modes and Ctrl shortcuts, and multi-stroke groups share one fade cycle
-- Annotation-count, scaling, multi-Reader, and cleanup stress validation remains pending
-- Runtime testing must remain inside the disposable profile and data directory. Do not touch the normal Zotero profile or library
+The v0.1.10 XPI installs and draws pen strokes and rectangles in Zotero 9.0.6. Toolbar modes, `Ctrl` shortcuts, and the shared multi-stroke fade have been tested by the user. TypeScript checking, all 30 automated tests, the build, and the package verifier also pass.
