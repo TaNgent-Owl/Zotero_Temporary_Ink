@@ -1,4 +1,6 @@
 pref("extensions.temporary-ink.enabled", true);
+pref("extensions.temporary-ink.modifier", "ctrl");
+pref("extensions.temporary-ink.rectangleModifier", "ctrl");
 pref("extensions.temporary-ink.penColor", "#FF4D4F");
 pref("extensions.temporary-ink.penWidth", "3");
 pref("extensions.temporary-ink.penOpacity", "0.85");

@@ -1,9 +1,23 @@
 import type { SettingsProvider } from "../config/preferences";
-import type { ToolMode } from "../config/constants";
+import type { ModifierOption, ToolMode } from "../config/constants";
 import { DisposableStore } from "../utils/disposable";
 import { Logger } from "../utils/logger";
 import { InkModel } from "./ink-model";
 import { InkRenderer } from "./ink-renderer";
+
+type ModifierEvent = Pick<KeyboardEvent | PointerEvent, "altKey" | "ctrlKey">;
+
+export function matchesModifier(modifier: ModifierOption, event: ModifierEvent): boolean {
+  switch (modifier) {
+    case "alt":
+      return event.altKey && !event.ctrlKey;
+    case "ctrl-alt":
+      return event.ctrlKey && event.altKey;
+    case "ctrl":
+    default:
+      return event.ctrlKey && !event.altKey;
+  }
+}
 
 export function resolveGestureTool(
   settings: ReturnType<SettingsProvider>,
@@ -11,8 +25,10 @@ export function resolveGestureTool(
   event: Pick<PointerEvent, "altKey" | "ctrlKey" | "shiftKey">,
 ): ToolMode {
   if (!settings.enabled) return "off";
-  const modifierActive = event.ctrlKey && !event.altKey;
-  if (modifierActive) return event.shiftKey ? "rectangle" : "pen";
+  // Pen uses the configured modifier without Shift; rectangle uses its own
+  // configured modifier together with Shift.
+  if (matchesModifier(settings.modifier, event) && !event.shiftKey) return "pen";
+  if (matchesModifier(settings.rectangleModifier, event) && event.shiftKey) return "rectangle";
   return mode;
 }
 
@@ -157,11 +173,14 @@ export class InputController {
     return resolveGestureTool(this.settingsProvider(), this.modeProvider(), event);
   }
 
-  private updateCursor(event?: Pick<KeyboardEvent | PointerEvent, "altKey" | "ctrlKey">): void {
+  private updateCursor(
+    event?: Pick<KeyboardEvent | PointerEvent, "altKey" | "ctrlKey" | "shiftKey">,
+  ): void {
     const settings = this.settingsProvider();
     const modeActive = settings.enabled && this.modeProvider() !== "off";
     if (event) {
-      this.modifierPressed = event.ctrlKey && !event.altKey;
+      this.modifierPressed = matchesModifier(settings.modifier, event)
+        || (matchesModifier(settings.rectangleModifier, event) && event.shiftKey);
     }
     this.viewerElement.style.cursor = modeActive || (settings.enabled && this.modifierPressed)
       ? "crosshair"

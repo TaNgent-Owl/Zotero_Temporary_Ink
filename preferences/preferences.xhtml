@@ -1,4 +1,3 @@
-<?xml version="1.0"?>
 <html:div xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
           xmlns:html="http://www.w3.org/1999/xhtml"
           id="temporary-ink-preferences">
@@ -11,6 +10,24 @@
       <html:input id="temporary-ink-enabled" type="checkbox"/>
       <html:span data-l10n-id="temporary-ink-pref-enable">Enable Temporary Ink</html:span>
     </html:label>
+
+    <html:label for="temporary-ink-modifier" data-l10n-id="temporary-ink-pref-modifier">Pen shortcut</html:label>
+    <menulist id="temporary-ink-modifier">
+      <menupopup>
+        <menuitem value="ctrl" label="Ctrl"/>
+        <menuitem value="alt" label="Alt"/>
+        <menuitem value="ctrl-alt" label="Ctrl+Alt"/>
+      </menupopup>
+    </menulist>
+
+    <html:label for="temporary-ink-rectangle-modifier" data-l10n-id="temporary-ink-pref-modifier-rectangle">Rectangle shortcut</html:label>
+    <menulist id="temporary-ink-rectangle-modifier">
+      <menupopup>
+        <menuitem value="ctrl" label="Ctrl + Shift"/>
+        <menuitem value="alt" label="Alt + Shift"/>
+        <menuitem value="ctrl-alt" label="Ctrl+Alt + Shift"/>
+      </menupopup>
+    </menulist>
 
     <html:label for="temporary-ink-pen-color" data-l10n-id="temporary-ink-pref-pen-color">Pen color</html:label>
     <html:input id="temporary-ink-pen-color" type="color"/>

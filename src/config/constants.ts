@@ -4,8 +4,12 @@ export const DATA_ATTRIBUTE = "data-temporary-ink";
 
 export type ToolMode = "off" | "pen" | "rectangle";
 
+export type ModifierOption = "ctrl" | "alt" | "ctrl-alt";
+
 export interface InkSettings {
   enabled: boolean;
+  modifier: ModifierOption;
+  rectangleModifier: ModifierOption;
   penColor: string;
   penWidth: number;
   penOpacity: number;
@@ -15,6 +19,8 @@ export interface InkSettings {
 
 export const DEFAULT_SETTINGS: Readonly<InkSettings> = Object.freeze({
   enabled: true,
+  modifier: "ctrl",
+  rectangleModifier: "ctrl",
   penColor: "#FF4D4F",
   penWidth: 3,
   penOpacity: 0.85,

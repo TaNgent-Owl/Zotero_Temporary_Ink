@@ -32,6 +32,37 @@ describe("gesture claiming", () => {
     expect(resolveGestureTool({ ...DEFAULT_SETTINGS, enabled: false }, "pen", keys(true))).toBe("off");
   });
 
+  it("honors a configured Alt modifier", () => {
+    const settings = { ...DEFAULT_SETTINGS, modifier: "alt" as const };
+    expect(resolveGestureTool(settings, "off", keys(false, false, true))).toBe("pen");
+    expect(resolveGestureTool(settings, "off", keys(false, true, true))).toBe("off");
+    expect(resolveGestureTool(settings, "off", keys(true))).toBe("off");
+    expect(resolveGestureTool(settings, "off", keys(true, false, true))).toBe("off");
+  });
+
+  it("honors a configured Ctrl+Alt modifier", () => {
+    const settings = { ...DEFAULT_SETTINGS, modifier: "ctrl-alt" as const };
+    expect(resolveGestureTool(settings, "off", keys(true, false, true))).toBe("pen");
+    expect(resolveGestureTool(settings, "off", keys(true, true, true))).toBe("off");
+    expect(resolveGestureTool(settings, "off", keys(true))).toBe("off");
+    expect(resolveGestureTool(settings, "off", keys(false, false, true))).toBe("off");
+  });
+
+  it("keeps the default Ctrl modifier while Alt+Shift drives a rectangle", () => {
+    const settings = { ...DEFAULT_SETTINGS, rectangleModifier: "alt" as const };
+    expect(resolveGestureTool(settings, "off", keys(true))).toBe("pen");
+    expect(resolveGestureTool(settings, "off", keys(true, true))).toBe("off");
+    expect(resolveGestureTool(settings, "off", keys(false, true, true))).toBe("rectangle");
+    expect(resolveGestureTool(settings, "off", keys(false, false, true))).toBe("off");
+  });
+
+  it("supports a Ctrl+Alt rectangle modifier alongside a plain Ctrl pen", () => {
+    const settings = { ...DEFAULT_SETTINGS, rectangleModifier: "ctrl-alt" as const };
+    expect(resolveGestureTool(settings, "off", keys(true))).toBe("pen");
+    expect(resolveGestureTool(settings, "off", keys(true, true, true))).toBe("rectangle");
+    expect(resolveGestureTool(settings, "off", keys(true, false, true))).toBe("off");
+  });
+
   it("leaves ordinary and Alt DOM drags untouched and fully owns only a Ctrl gesture", () => {
     Object.assign(globalThis, { Zotero: { debug() {} } });
     const dom = new JSDOM(
