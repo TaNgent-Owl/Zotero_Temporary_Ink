@@ -36,4 +36,10 @@ Open, draw in, and close the same PDF 20 times. Inspect the Reader DOM: at most 
 
 ## Result record
 
-Runtime verification has not been performed in this source environment. Do not mark the Zotero 9.0.6 acceptance items PASS until these checks are executed in Zotero Desktop.
+Current evidence:
+
+- The Windows host has Zotero **9.0.6** exactly.
+- Offline gates pass: TypeScript typecheck, 20 automated tests, XPI build, and package verification.
+- An isolated Zotero profile launched with `-datadir profile` created a separate data directory. Copying the XPI or using an extensions-directory proxy did not register the add-on; the isolated profile's `extensions.json` remained empty.
+- Therefore installation is **not verified**, and no PDF interaction, annotation-count, scaling, multi-Reader, or cleanup test above has been completed.
+- Broad Zotero process cleanup was rejected as unsafe. Future runtime work must use only the disposable profile and data directory; the normal Zotero profile and library must not be touched.

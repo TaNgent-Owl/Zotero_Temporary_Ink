@@ -22,7 +22,7 @@ The overlay is intentionally absent after about 800 ms. A verified Zotero 9.0.6 
 2. In Zotero, choose **Tools → Add-ons → Install Add-on From File**.
 3. Select `dist/zotero-temporary-ink-0.1.0.xpi`.
 
-The manifest supports Zotero 9.0 through 9.0.x. Zotero 9.0.6 is the source target; runtime validation must still be recorded before claiming it tested.
+The manifest supports Zotero 9.0 through 9.0.x. The Windows test host has Zotero 9.0.6 exactly, but add-on installation and Reader interaction are not yet verified.
 
 ## Usage and shortcuts
 
@@ -62,4 +62,7 @@ The private Reader dependency and exact pinned sources are documented in `docs/z
 - Primary view only when Zotero split view is active
 - Viewport coordinates are not PDF-page coordinates
 - Ink intentionally disappears on scroll, resize, zoom, and rotation
-- The current source environment cannot perform Zotero Desktop interaction tests
+- Offline typecheck, 20 tests, XPI build, and package verification pass
+- An isolated `-datadir profile` run created a separate data directory, but XPI/proxy sideloading did not register the add-on (`extensions.json` remained empty)
+- No PDF interaction test has completed; installation success is not claimed
+- Runtime testing must remain inside the disposable profile and data directory. Do not touch the normal Zotero profile or library
