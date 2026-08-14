@@ -1,5 +1,5 @@
-import type { SettingsProvider } from "../config/preferences";
-import type { ModifierOption, ToolMode } from "../config/constants";
+import { adjustPenWidth, setPenColor, type SettingsProvider } from "../config/preferences";
+import { PALETTE_COLORS, type ModifierOption, type ToolMode } from "../config/constants";
 import { DisposableStore } from "../utils/disposable";
 import { Logger } from "../utils/logger";
 import { InkModel } from "./ink-model";
@@ -38,6 +38,11 @@ export class InputController {
   private captureTarget: Element | null = null;
   private gestureTool: Exclude<ToolMode, "off"> | null = null;
   private modifierPressed = false;
+  private lastModifierBits: string | null = null;
+  private selectionBlocked = false;
+  private selectionBlockStyle: HTMLStyleElement | null = null;
+  private captureEngaged = false;
+  private captureTimerID: number | null = null;
   private destroyed = false;
 
   constructor(
@@ -57,7 +62,10 @@ export class InputController {
     this.listen("pointercancel", this.onPointerCancel as EventListener, options);
     this.listen("keydown", this.onKeyDown as EventListener, options);
     this.listen("keyup", this.onModifierChange as EventListener, options);
+    this.listen("selectstart", this.onSelectStart as EventListener, true);
     this.listen("blur", this.onBlur as EventListener, true);
+    this.window.document.addEventListener("selectionchange", this.onSelectionChange, true);
+    this.disposables.add(() => this.window.document.removeEventListener("selectionchange", this.onSelectionChange, true));
     this.window.document.addEventListener("visibilitychange", this.onVisibilityChange, true);
     this.disposables.add(() => this.window.document.removeEventListener("visibilitychange", this.onVisibilityChange, true));
     this.updateCursor();
@@ -96,17 +104,22 @@ export class InputController {
     this.gestureTool = tool;
     this.updateCursor(event);
     this.captureTarget = event.target instanceof this.window.Element ? event.target : null;
-    try {
-      this.captureTarget?.setPointerCapture?.(event.pointerId);
-    }
-    catch {
-      // Window-level capture listeners still guarantee a safe fallback.
-    }
+    // Cancel the default actions first. Deferring pointer capture past the
+    // mousedown dispatch is what keeps this cancellation effective: capture
+    // set during pointerdown disables the suppression of the compatibility
+    // 'mousedown', and Zotero's selection handling runs on that mousedown.
+    this.consume(event);
+    this.captureEngaged = false;
+    this.captureTimerID = this.window.setTimeout(() => {
+      this.captureTimerID = null;
+      this.engagePointerCapture();
+    }, 0);
+    // A claimed gesture must not select the PDF text under the pointer.
+    this.setSelectionBlocked(true);
 
     const point = this.renderer.pointFromClient(event.clientX, event.clientY, event.timeStamp);
     if (tool === "pen") this.model.startPen(point);
     else this.model.startRectangle(point);
-    this.consume(event);
     this.renderer.invalidate();
     Logger.debug(`Gesture start: ${tool}`);
   };
@@ -116,6 +129,9 @@ export class InputController {
       if (this.modeProvider() === "off") this.updateCursor(event);
       return;
     }
+    // The compatibility mousedown has already been dispatched by now, so
+    // engaging capture here no longer undoes its suppression.
+    this.engagePointerCapture();
     const events = typeof event.getCoalescedEvents === "function"
       ? event.getCoalescedEvents()
       : [event];
@@ -156,10 +172,52 @@ export class InputController {
       event.stopPropagation();
       return;
     }
+    this.handleShortcutKey(event);
     this.updateCursor(event);
   };
 
   private readonly onModifierChange = (event: KeyboardEvent): void => this.updateCursor(event);
+
+  private handleShortcutKey(event: KeyboardEvent): void {
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
+    if (!this.settingsProvider().enabled) return;
+    if (this.isEditableTarget(event)) return;
+
+    if (event.key >= "1" && event.key <= "6") {
+      const color = PALETTE_COLORS[Number(event.key) - 1];
+      if (color) setPenColor(color);
+      return;
+    }
+    if (event.key === "[") {
+      adjustPenWidth(-1);
+      return;
+    }
+    if (event.key === "]") {
+      adjustPenWidth(1);
+    }
+  }
+
+  private isEditableTarget(event: KeyboardEvent): boolean {
+    const target = event.target;
+    if (!(target instanceof this.window.HTMLElement)) return false;
+    const tag = target.tagName.toLowerCase();
+    return tag === "input" || tag === "textarea" || target.isContentEditable;
+  }
+
+  private readonly onSelectStart = (event: Event): void => {
+    // A claimed ink gesture must never begin a text selection in the viewer.
+    // Unclaimed gestures fall through untouched so OFF-mode selection works.
+    if (this.gestureTool === null) return;
+    this.consume(event);
+  };
+  private readonly onSelectionChange = (): void => {
+    // Programmatic selection (Zotero's own mousedown-driven selection path)
+    // bypasses both user-select CSS and selectstart. Clear any selection the
+    // viewer establishes while a claimed gesture is active.
+    if (this.gestureTool === null) return;
+    const selection = this.window.getSelection();
+    if (selection && selection.rangeCount > 0) selection.removeAllRanges();
+  };
   private readonly onBlur = (): void => {
     this.modifierPressed = false;
     this.cancelGesture();
@@ -176,6 +234,12 @@ export class InputController {
   private updateCursor(
     event?: Pick<KeyboardEvent | PointerEvent, "altKey" | "ctrlKey" | "shiftKey">,
   ): void {
+    // Pointer moves fire at 125-240 Hz; recompute only when the modifier state
+    // actually changes, so hovering in OFF mode does not re-read all preferences
+    // on every move. Callers without an event always recompute.
+    const bits = event ? event.ctrlKey + "|" + event.altKey + "|" + event.shiftKey : null;
+    if (bits !== null && bits === this.lastModifierBits) return;
+    if (bits !== null) this.lastModifierBits = bits;
     const settings = this.settingsProvider();
     const modeActive = settings.enabled && this.modeProvider() !== "off";
     if (event) {
@@ -213,12 +277,81 @@ export class InputController {
     this.pointerID = null;
     this.captureTarget = null;
     this.gestureTool = null;
+    this.captureEngaged = false;
+    if (this.captureTimerID !== null) {
+      this.window.clearTimeout(this.captureTimerID);
+      this.captureTimerID = null;
+    }
+    this.setSelectionBlocked(false);
     this.updateCursor();
   }
 
   private cancelGesture(): void {
     this.model.cancelActive(this.window.performance.now());
     this.finishGesture();
+  }
+
+  /**
+   * Engages pointer capture exactly once per gesture, after the compatibility
+   * mousedown has been dispatched. During pointerdown, active capture would
+   * disable preventDefault()'s suppression of that mousedown; deferring keeps
+   * Zotero's selection/annotation handling out of claimed gestures while still
+   * letting edge drags release cleanly.
+   */
+  private engagePointerCapture(): void {
+    if (this.captureEngaged || this.pointerID === null) return;
+    this.captureEngaged = true;
+    if (this.captureTimerID !== null) {
+      this.window.clearTimeout(this.captureTimerID);
+      this.captureTimerID = null;
+    }
+    try {
+      this.captureTarget?.setPointerCapture?.(this.pointerID);
+    }
+    catch {
+      // Window-level capture listeners still guarantee a safe fallback.
+    }
+  }
+
+  /**
+   * Blocks text selection in the nested viewer document for the duration of a
+   * claimed gesture. The suppression is pure CSS (a scoped stylesheet toggled by
+   * a class on the document root) plus a capture-phase 'selectstart' cancel, so
+   * it cannot disturb pointer events, ink rendering, or the viewer itself.
+   */
+  private setSelectionBlocked(blocked: boolean): void {
+    if (this.selectionBlocked === blocked) return;
+    this.selectionBlocked = blocked;
+    const document = this.viewerElement.ownerDocument;
+    const root = document.documentElement;
+    if (!root) return;
+    if (blocked) {
+      this.ensureSelectionBlockStyle(document);
+      root.classList.add("temporary-ink-selection-blocked");
+    }
+    else {
+      root.classList.remove("temporary-ink-selection-blocked");
+      this.selectionBlockStyle?.remove();
+      this.selectionBlockStyle = null;
+    }
+  }
+
+  private ensureSelectionBlockStyle(document: Document): void {
+    document.querySelector('[data-temporary-ink="selection-block"]')?.remove();
+    const style = document.createElement("style");
+    style.dataset.temporaryInk = "selection-block";
+    // '!important' beats any stylesheet (and non-important inline) user-select
+    // rule, including PDF.js's '.textLayer { user-select: text }'.
+    style.textContent = [
+      "html.temporary-ink-selection-blocked,",
+      "html.temporary-ink-selection-blocked * {",
+      "  user-select: none !important;",
+      "  -webkit-user-select: none !important;",
+      "  -moz-user-select: none !important;",
+      "}",
+    ].join("\n");
+    (document.head ?? document.documentElement).append(style);
+    this.selectionBlockStyle = style;
   }
 
   private listen(type: string, handler: EventListener, options: boolean | AddEventListenerOptions): void {

@@ -1,5 +1,6 @@
 import type { ToolMode } from "../config/constants";
 import type { ReaderController } from "../reader/reader-controller";
+import { PalettePopover } from "./palette";
 
 interface LocalizedDocument extends Document {
   l10n?: {
@@ -26,8 +27,12 @@ const MODE_KEYS: Record<ToolMode, string> = {
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const PEN_PATH = "M15.616 6.5a1.25 1.25 0 0 1 1.768 0L18.5 7.616a1.25 1.25 0 0 1 0 1.768l-7.954 7.954a1.25 1.25 0 0 1-.488.302l-2.86.953-1.186.395.395-1.186.953-2.86a1.25 1.25 0 0 1 .302-.488zM14.5 9.384l-5.954 5.954-.558 1.674 1.674-.558 5.954-5.954zm.884-.884L16.5 9.616 17.616 8.5 16.5 7.384z";
+const PEN_HANDLE_PATH = "M15 5 8 12";
+const PEN_TIP_PATH = "M8 12.25c-1.1 0-2 .9-2 2 0 1.45 1.2 2.25 2.5 2.25 1.5 0 2.75-1.25 2.75-2.75 0-1.15-1.6-1.5-3.25-1.5z";
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_THRESHOLD = 8;
 
-function createToolbarIcon(document: Document): SVGSVGElement {
+function createSvgShell(document: Document): SVGSVGElement {
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("width", "20");
   svg.setAttribute("height", "20");
@@ -35,6 +40,11 @@ function createToolbarIcon(document: Document): SVGSVGElement {
   svg.setAttribute("fill", "none");
   svg.setAttribute("aria-hidden", "true");
   svg.style.pointerEvents = "none";
+  return svg;
+}
+
+function createOffIcon(document: Document): SVGSVGElement {
+  const svg = createSvgShell(document);
 
   const pen = document.createElementNS(SVG_NS, "path");
   pen.setAttribute("d", PEN_PATH);
@@ -65,6 +75,46 @@ function createToolbarIcon(document: Document): SVGSVGElement {
   return svg;
 }
 
+function createPenIcon(document: Document): SVGSVGElement {
+  const svg = createSvgShell(document);
+
+  const handle = document.createElementNS(SVG_NS, "path");
+  handle.setAttribute("d", PEN_HANDLE_PATH);
+  handle.setAttribute("stroke", "currentColor");
+  handle.setAttribute("stroke-width", "2");
+  handle.setAttribute("stroke-linecap", "round");
+
+  const tip = document.createElementNS(SVG_NS, "path");
+  tip.setAttribute("d", PEN_TIP_PATH);
+  tip.setAttribute("fill", "currentColor");
+
+  svg.append(handle, tip);
+  return svg;
+}
+
+function createRectangleIcon(document: Document): SVGSVGElement {
+  const svg = createSvgShell(document);
+
+  const rect = document.createElementNS(SVG_NS, "rect");
+  rect.setAttribute("x", "3.5");
+  rect.setAttribute("y", "4.5");
+  rect.setAttribute("width", "13");
+  rect.setAttribute("height", "11");
+  rect.setAttribute("rx", "1");
+  rect.setAttribute("fill", "none");
+  rect.setAttribute("stroke", "currentColor");
+  rect.setAttribute("stroke-width", "1.5");
+
+  svg.append(rect);
+  return svg;
+}
+
+const ICON_BUILDERS: Record<ToolMode, (document: Document) => SVGSVGElement> = {
+  off: createOffIcon,
+  pen: createPenIcon,
+  rectangle: createRectangleIcon,
+};
+
 function ensureLocalization(document: Document): HTMLLinkElement {
   const existing = document.querySelector<HTMLLinkElement>('[data-temporary-ink="localization"]');
   if (existing) return existing;
@@ -90,13 +140,24 @@ export function mountToolbar(
   button.setAttribute("aria-pressed", "false");
   button.setAttribute("aria-busy", "true");
 
-  button.append(createToolbarIcon(event.doc));
-
   let disposed = false;
   let updateSequence = 0;
   let pendingMode: ToolMode = "off";
   let controller: ToolbarController | null = null;
   let unsubscribe: (() => void) | null = null;
+  let modeIcon: SVGSVGElement | null = null;
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let longPressStartX = 0;
+  let longPressStartY = 0;
+  let suppressNextClick = false;
+  const popover = new PalettePopover(event.doc);
+
+  const setModeIcon = (mode: ToolMode) => {
+    modeIcon?.remove();
+    modeIcon = ICON_BUILDERS[mode](event.doc);
+    button.append(modeIcon);
+  };
+
   const update = (mode: ToolMode) => {
     pendingMode = mode;
     const sequence = ++updateSequence;
@@ -106,6 +167,7 @@ export function mountToolbar(
     button.setAttribute("aria-pressed", String(mode !== "off"));
     button.dataset.mode = mode;
     button.classList.toggle("active", mode !== "off");
+    setModeIcon(mode);
 
     const l10n = (event.doc as LocalizedDocument).l10n;
     if (!l10n) return;
@@ -119,14 +181,57 @@ export function mountToolbar(
       button.setAttribute("aria-label", label);
     }).catch(() => {});
   };
+
+  const cancelLongPress = (): void => {
+    if (longPressTimer !== null) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  };
+
+  const onPointerDown = (pointerEvent: PointerEvent): void => {
+    suppressNextClick = false;
+    cancelLongPress();
+    longPressStartX = pointerEvent.clientX;
+    longPressStartY = pointerEvent.clientY;
+    longPressTimer = setTimeout(() => {
+      longPressTimer = null;
+      suppressNextClick = true;
+      popover.open(button);
+    }, LONG_PRESS_MS);
+  };
+
+  const onPointerMove = (pointerEvent: PointerEvent): void => {
+    if (longPressTimer === null) return;
+    const dx = pointerEvent.clientX - longPressStartX;
+    const dy = pointerEvent.clientY - longPressStartY;
+    if (dx * dx + dy * dy > LONG_PRESS_MOVE_THRESHOLD * LONG_PRESS_MOVE_THRESHOLD) {
+      cancelLongPress();
+    }
+  };
+
+  const onPointerEnd = (): void => {
+    cancelLongPress();
+  };
+
   const handleClick = () => {
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      return;
+    }
     if (controller) {
       controller.cycleMode();
       return;
     }
     update(pendingMode === "off" ? "pen" : pendingMode === "pen" ? "rectangle" : "off");
   };
+
   button.addEventListener("click", handleClick);
+  button.addEventListener("pointerdown", onPointerDown);
+  button.addEventListener("pointermove", onPointerMove);
+  button.addEventListener("pointerup", onPointerEnd);
+  button.addEventListener("pointerleave", onPointerEnd);
+  button.addEventListener("pointercancel", onPointerEnd);
   update("off");
 
   // Zotero's renderToolbar append function is valid only during the callback.
@@ -149,10 +254,17 @@ export function mountToolbar(
       if (disposed) return;
       disposed = true;
       updateSequence++;
+      cancelLongPress();
       button.removeEventListener("click", handleClick);
+      button.removeEventListener("pointerdown", onPointerDown);
+      button.removeEventListener("pointermove", onPointerMove);
+      button.removeEventListener("pointerup", onPointerEnd);
+      button.removeEventListener("pointerleave", onPointerEnd);
+      button.removeEventListener("pointercancel", onPointerEnd);
       unsubscribe?.();
       unsubscribe = null;
       controller = null;
+      popover.dispose();
       button.remove();
       if (!event.doc.querySelector('[data-temporary-ink="toolbar"]')) localizationLink.remove();
       onDispose?.();

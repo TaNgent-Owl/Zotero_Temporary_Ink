@@ -17,6 +17,15 @@ export interface InkSettings {
   fadeDuration: number;
 }
 
+export const PALETTE_COLORS: readonly string[] = Object.freeze([
+  "#FF4D4F",
+  "#FA8C16",
+  "#FADB14",
+  "#52C41A",
+  "#1677FF",
+  "#722ED1",
+]);
+
 export const DEFAULT_SETTINGS: Readonly<InkSettings> = Object.freeze({
   enabled: true,
   modifier: "ctrl",

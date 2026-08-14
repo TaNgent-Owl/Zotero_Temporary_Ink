@@ -39,4 +39,16 @@ export function readSettings(): InkSettings {
   };
 }
 
+export function setPenColor(color: string): void {
+  if (Zotero.Prefs.get(PREF_KEYS.penColor, true) === color) return;
+  Zotero.Prefs.set(PREF_KEYS.penColor, color, true);
+}
+
+export function adjustPenWidth(delta: number): void {
+  const current = numberPreference(PREF_KEYS.penWidth, DEFAULT_SETTINGS.penWidth, 1, 20);
+  const next = Math.min(20, Math.max(1, current + delta));
+  if (next === current) return;
+  Zotero.Prefs.set(PREF_KEYS.penWidth, next, true);
+}
+
 export type SettingsProvider = () => InkSettings;

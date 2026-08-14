@@ -30,22 +30,34 @@ class TemporaryInkAddon {
     await Zotero.uiReadyPromise;
     if (!this.active) return;
 
-    this.preferencePaneID = await registerPreferencePane(rootURI);
+    // A preferences pane failure must not disable the whole plugin.
+    try {
+      this.preferencePaneID = await registerPreferencePane(rootURI);
+    }
+    catch (error) {
+      Logger.error(error);
+      this.preferencePaneID = null;
+    }
     for (const key of Object.values(PREF_KEYS)) {
       this.preferenceObserverIDs.push(
         Zotero.Prefs.registerObserver(key, () => this.registry.refreshSettings(), true),
       );
     }
 
-    // Supports enable-without-restart for already-open PDF readers. The adapter
-    // recreates Zotero's section wrapper only when the official render event was
-    // missed; a later normal render replaces it through the same control lifecycle.
-    await Promise.all(this.adapter.getOpenReaders().map(async (reader) => {
-      const controller = await this.registry.ensure(reader);
-      if (!this.active || !controller) return;
-      const event = this.adapter.createExistingToolbarEvent(reader);
-      if (event) this.handleRenderToolbar(event);
-    }));
+    // Supports enable-without-restart for already-open PDF readers. Mount each
+    // toolbar synchronously and let handleRenderToolbar bind the controller
+    // asynchronously, so a slow reader (attachment can retry for ~10.5 s before
+    // failing closed) cannot stall startup; a reader that never becomes ready
+    // still has its control disposed through the binding's null path.
+    for (const reader of this.adapter.getOpenReaders()) {
+      try {
+        const event = this.adapter.createExistingToolbarEvent(reader);
+        if (event) this.handleRenderToolbar(event);
+      }
+      catch (error) {
+        Logger.error(error);
+      }
+    }
     Logger.debug("Plugin started");
   }
 
@@ -67,40 +79,47 @@ class TemporaryInkAddon {
   }
 
   private readonly handleRenderToolbar = (event: ZoteroReaderEvent): void => {
-    if (!this.active) return;
-    if (!event.reader || typeof event.reader !== "object") return;
-    const readerType = (event.reader as { type?: unknown; _type?: unknown }).type
-      ?? (event.reader as { _type?: unknown })._type;
-    if (readerType !== "pdf") return;
+    try {
+      if (!this.active) return;
+      if (!event.reader || typeof event.reader !== "object") return;
+      const readerType = (event.reader as { type?: unknown; _type?: unknown }).type
+        ?? (event.reader as { _type?: unknown })._type;
+      if (readerType !== "pdf") return;
 
-    const previous = this.toolbarControls.get(event.doc);
-    if (previous?.element.isConnected) return;
-    previous?.dispose();
+      const previous = this.toolbarControls.get(event.doc);
+      if (previous?.element.isConnected) return;
+      previous?.dispose();
 
-    // append() is synchronous-only in Zotero's renderToolbar callback.
-    let control: ToolbarControl | null = null;
-    control = mountToolbar(event, () => {
-      if (control && this.toolbarControls.get(event.doc) === control) {
-        this.toolbarControls.delete(event.doc);
-      }
-    });
-    if (!control) return;
-    this.toolbarControls.set(event.doc, control);
-
-    void this.registry.ensure(event.reader, event.doc)
-      .then((controller) => {
-        if (
-          this.active
-          && controller
-          && control.element.isConnected
-          && this.toolbarControls.get(event.doc) === control
-        ) {
-          control.bind(controller);
-          return;
+      // append() is synchronous-only in Zotero's renderToolbar callback.
+      let control: ToolbarControl | null = null;
+      control = mountToolbar(event, () => {
+        if (control && this.toolbarControls.get(event.doc) === control) {
+          this.toolbarControls.delete(event.doc);
         }
-        control.dispose();
-      })
-      .catch((error) => Logger.error(error));
+      });
+      if (!control) return;
+      this.toolbarControls.set(event.doc, control);
+
+      void this.registry.ensure(event.reader, event.doc)
+        .then((controller) => {
+          if (
+            this.active
+            && controller
+            && control.element.isConnected
+            && this.toolbarControls.get(event.doc) === control
+          ) {
+            control.bind(controller);
+            return;
+          }
+          control.dispose();
+        })
+        .catch((error) => Logger.error(error));
+    }
+    catch (error) {
+      // Zotero calls this handler synchronously inside its own toolbar render
+      // loop; a failure here must never break the Reader.
+      Logger.error(error);
+    }
   };
 }
 

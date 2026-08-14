@@ -1,6 +1,6 @@
 {
   "name": "zotero-temporary-ink",
-  "version": "0.1.13",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "A zero-persistence temporary ink overlay for the Zotero 9 PDF Reader.",
