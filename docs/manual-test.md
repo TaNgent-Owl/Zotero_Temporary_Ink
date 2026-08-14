@@ -1,6 +1,6 @@
 # Zotero 9.0.6 Manual Test Checklist
 
-Record Zotero build, OS, display scaling, PDF, starting annotation count, result, and console errors for each run. Run against an installed `dist/zotero-temporary-ink-0.1.13.xpi`.
+Record Zotero build, OS, display scaling, PDF, starting annotation count, result, and console errors for each run. Run against an installed `dist/zotero-temporary-ink-0.2.0.xpi`.
 
 | ID | Test | Expected result |
 |---|---|---|
@@ -22,6 +22,20 @@ Record Zotero build, OS, display scaling, PDF, starting annotation count, result
 | 16 | Cycle toolbar OFF → PEN → RECTANGLE → OFF | Plain drag is claimed only in PEN/RECTANGLE; Ctrl overrides remain available in OFF. |
 | 17 | Change every preference while Readers are open | New gestures use new values; disabling clears ink and mode. |
 | 18 | Open EPUB and snapshot Readers | No canvas, active toolbar control, or error is produced. |
+| 19 | `Ctrl`-drag across a line of PDF text | Ink draws normally; text selection under the pointer is suppressed (at most a small harmless residue); no lingering selection remains after the stroke fades. |
+| 20 | `Ctrl+Shift`-drag across text, release over text | Same as 19 for the rectangle gesture. |
+| 21 | Plain drag while toolbar is OFF after tests 19-20 | Text selects normally again immediately; no stuck selection block, class, or style element. |
+| 22 | With a text selection already active, `Ctrl`-drag elsewhere | The new ink gesture neither extends nor replaces the selection and the plugin leaves the pre-existing selection alone. |
+| 23 | While a stroke fades, inspect the nested viewer `<head>` | No `[data-temporary-ink="selection-block"]` style element and no `temporary-ink-selection-blocked` class remain. |
+| 24 | Cycle toolbar OFF → PEN → RECTANGLE → OFF while watching the icon | The icon swaps immediately per mode; OFF restores the default icon; no duplicate button appears. |
+| 25 | Long-press the toolbar button | The 6-swatch palette opens near the button; the current color is highlighted; releasing does not cycle the mode. |
+| 26 | Click a swatch, then draw | Palette closes; the next stroke uses the new color immediately; the preference pane shows the same value. |
+| 27 | Press digit keys 1–6 with no modifiers held | Pen color switches to the matching preset; typing in inputs (e.g. page-number field) is unaffected; Zotero shortcuts are untouched. |
+| 28 | Press `[` and `]` with no modifiers held | Width steps 1 px within 1–20 and applies to the next stroke; the preference pane reflects it. |
+| 29 | Hold `Ctrl` while toolbar is OFF | Corner badge shows tool name, color dot, and width; it disappears on key release or after about 1 s. |
+| 30 | Plain left-drag in PEN mode | Badge appears while drawing and disappears on release. |
+| 31 | Draw in PEN mode, then press `Esc` | Ink and badge disappear; no badge DOM node remains. |
+| 32 | Open the palette, close with `Esc` / outside click, then disable the plugin | Palette closes with no DOM residue; after disabling, no palette or badge nodes remain in the Reader. |
 
 ## Zero-pollution gate
 
@@ -32,11 +46,13 @@ Record Zotero build, OS, display scaling, PDF, starting annotation count, result
 
 ## Cleanup stress gate
 
-Open, draw in, and close the same PDF 20 times. Inspect the Reader DOM: at most one `[data-temporary-ink="canvas"]` and one `[data-temporary-ink="toolbar"]` may exist per live Reader. Confirm no accumulating controllers, listeners, errors, or stuck cursor.
+Open, draw in, and close the same PDF 20 times. Inspect the Reader DOM: at most one `[data-temporary-ink="canvas"]`, one `[data-temporary-ink="toolbar"]`, and one `[data-temporary-ink="badge"]` may exist per live Reader, and no `[data-temporary-ink="palette"]` element may remain. Confirm no accumulating controllers, listeners, errors, or stuck cursor.
 
 ## Result record
 
 Current evidence:
+
+- v0.2.0 (2026-08-14) built by the plan-builder-evaluator process (two parallel builder agents, planner/evaluator verification). TypeScript typecheck passes with zero errors and all 80 automated tests pass (14 files); `dist/zotero-temporary-ink-0.2.0.xpi` builds and `verify:package` passes (10 files). Rows 24–32 track the new v0.2 interactions; Zotero 9.0.6 desktop confirmation for them is pending the user's manual run.
 
 - The Windows host has Zotero **9.0.6** exactly.
 - Zotero rejected the 0.1.0 XPI because its manifest omitted the Zotero-required `applications.zotero.update_url`; 0.1.1 adds the field and a package regression check.
@@ -51,4 +67,5 @@ Current evidence:
 - Offline gates pass: TypeScript typecheck, 30 automated tests, XPI build, and package verification.
 - A fresh isolated Zotero 9.0.6 profile recognized the 0.1.1 XPI as `temporary-ink@local`, version `0.1.1`, with `appDisabled: false` and the expected `9.0` through `9.0.*` target range. Because it was copied directly into the profile, Zotero marked the foreign sideload `userDisabled: true` pending user confirmation.
 - User validation confirms that 0.1.9 installs and that the toolbar, Ctrl pen, and Ctrl+Shift rectangle functions work in Zotero 9.0.6. Annotation-count, scaling, multi-Reader, and cleanup stress tests remain incomplete.
+- Text selection during drawing (the former top limitation) is largely suppressed. First-round CSS/`selectstart` blocking alone was insufficient on Zotero 9.0.6, where selection is established programmatically from a leaked compatibility `mousedown` (active pointer capture during `pointerdown` disables `preventDefault()`'s mousedown suppression). Deferring `setPointerCapture()` until the first `pointermove` or a zero-delay fallback, plus `user-select: none !important`, `selectstart` cancellation, and `selectionchange` clearing, reduces the residual selection to a small, user-accepted amount; ten automated tests cover the deferral and all guards. Manual rows 19-23 track it on Zotero 9.0.6.
 - Broad Zotero process cleanup was rejected as unsafe. Future runtime work must use only the disposable profile and data directory; the normal Zotero profile and library must not be touched.

@@ -48,6 +48,19 @@ The nested PDF document is destroyed when its view is closed or reloaded. Tempor
 
 The pinned `PDFView` registers both capture `pointerdown` and capture `mousedown`. Its pointer handler immediately returns when `event.pointerType === "mouse"`; the compatibility `mousedown` performs native selection/annotation handling. Temporary Ink therefore claims only primary mouse `pointerdown` and calls `preventDefault()` after confirming its toolbar mode or Ctrl override. Per Pointer Events compatibility behavior, this suppresses the following `mousedown`, so a claimed temporary gesture cannot also start a native annotation. An unclaimed OFF-mode pointerdown, Alt, and Ctrl+Alt are untouched, so native text selection and tools receive their normal mouse event. Stylus input is deliberately not claimed in v0.1.0 because Zotero handles pen pointerdown directly.
 
+### Text selection during claimed gestures
+
+Calling `preventDefault()` on `pointerdown` only suppresses the compatibility `mousedown` while the pointer is **not captured**: implementations make the suppression decision at mousedown-dispatch time, and an active capture disables it (WebKit fix "Compatibility mouse events can only be prevented while the pointer is not captured"; same behavior observed in the Zotero 9.0.6 host). v0.1.13 captured the pointer synchronously inside the `pointerdown` handler, so the leaked `mousedown` reached Zotero's selection handling and text kept getting selected during drawing — regardless of CSS or `selectstart` cancellation, because that path establishes the selection programmatically (programmatic selection bypasses both).
+
+The fix in `InputController` has four layers and never intercepts mouse events directly (an earlier interception attempt stopped ink rendering and once prevented a test PDF from opening):
+
+1. `preventDefault()` runs on `pointerdown`, and `setPointerCapture()` is **deferred** until the first `pointermove` of the gesture (or a zero-delay timer fallback). By then the mousedown dispatch decision has already been made, so the suppression takes effect and Zotero's mousedown-driven selection handling is kept out of claimed gestures in the common case. Edge drags still release cleanly because capture engages as soon as the pointer moves. Note: user testing on Zotero 9.0.6 shows the result is a large reduction rather than a guarantee — a small residual selection can still appear in some cases, which was accepted as a harmless limitation.
+2. While a gesture is claimed, a scoped stylesheet in the nested viewer document head (`html.temporary-ink-selection-blocked, html.temporary-ink-selection-blocked * { user-select: none !important; … }`) blocks native selection. The `!important` universal rule beats PDF.js's `.textLayer { user-select: text }`; the style element exists only while a gesture is active.
+3. A capture-phase `selectstart` listener cancels any native selection attempt during a claimed gesture.
+4. A `selectionchange` listener clears any selection the viewer establishes programmatically while a gesture is active (`removeAllRanges()`), covering engines where the mousedown still leaks.
+
+All layers are released through `finishGesture()`, the single exit chokepoint shared by pointerup, pointercancel, Escape, blur, disable refresh, and destroy.
+
 ## Sources
 
 - <https://github.com/zotero/zotero/blob/9.0.6/chrome/content/zotero/xpcom/reader.js>

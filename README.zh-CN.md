@@ -8,23 +8,27 @@ Temporary Ink 为 Zotero 9 的 PDF 阅读器加了一层临时墨迹：画一条
 
 ## 安装
 
-1. 从[最新发布页面](https://github.com/TaNgent-Owl/Zotero_Temporary_Ink/releases/latest)下载 `zotero-temporary-ink-0.1.13.xpi`。
+1. 从[最新发布页面](https://github.com/TaNgent-Owl/Zotero_Temporary_Ink/releases/latest)下载 `zotero-temporary-ink-0.2.0.xpi`。
 2. 在 Zotero 中打开 **工具 → 附加组件**。
 3. 点击右上角的齿轮，选择 **从文件安装附加组件**，然后选中下载好的 XPI。
 4. 如果 Zotero 提示重启，按提示操作即可。
 
-当前版本面向 Zotero 9.0–9.0.x，已在 9.0.6 上验证。需要回退时，可以安装上一个稳定版本 v0.1.9。
+当前版本面向 Zotero 9.0–9.0.x，已在 9.0.6 上验证。需要回退时，可以安装上一个稳定版本 v0.1.13。
 
 ## 怎么画
 
 - 按住 `Ctrl` 再用鼠标左键拖动：画笔。
-- 按住 `Ctrl+Shift` 拖动：矩形框。
+- 按住 `Ctrl+Shift` 拖动：框选。
 - 点击阅读器工具栏按钮，可以在“关闭、画笔、框选”之间循环切换。切到画笔或框选后，直接按住左键拖动即可连续绘制。
 - 按 `Esc` 清除当前墨迹；没有墨迹时，插件不会拦截 `Esc`。
+- 工具栏图标会随当前模式变化（关闭 / 画笔 / 框选），悬停 tooltip 显示当前模式。
+- 长按工具栏按钮打开快捷调色板：六个预设颜色，点一下立即切换画笔颜色。调色板会高亮当前颜色，按 `Esc` 或点击空白处关闭，只写插件自身偏好，不写任何 Zotero 数据。
+- 数字键 `1`–`6` 在六个预设颜色间切换，`[` / `]` 每按一次将线宽减小 / 增大 1 px（1–20）。两者都只在没有按住修饰键、焦点不在输入框时生效，不影响 Zotero 原有按键。
+- 在“关闭”模式下按住绘制修饰键，或在画笔 / 框选模式下开始拖动时，阅读器角落会出现一个小徽标，显示当前工具、颜色点和线宽；松键或约 1 秒后自动消失，且不拦截任何输入。
 
 画得比较近的几笔会被归为同一张草图。开始下一笔时，只要之前的墨迹还没完全消失，就会恢复为完整显示，并暂停淡出计时。最后一笔画完后，整张草图停留 300 ms，再在 500 ms 内淡出。
 
-需要 Zotero 正常的文字选择行为时，把工具栏模式留在“关闭”。插件不占用 `Alt` 和 `Ctrl+Alt`。
+需要 Zotero 正常的文字选择行为时，把工具栏模式留在“关闭”。画笔和框选快捷键默认是 `Ctrl` 和 `Ctrl+Shift`，可以在偏好面板中改为 `Alt` 或 `Ctrl+Alt`。
 
 ## 设置
 
@@ -34,7 +38,7 @@ Temporary Ink 为 Zotero 9 的 PDF 阅读器加了一层临时墨迹：画一条
 
 ## 目前的不足
 
-最明显的问题是文字选择：绘制时，Zotero/PDF.js 仍可能顺手选中指针经过的 PDF 内嵌文字。我们试过拦截这类选择，但同一套拦截会让墨迹无法渲染，甚至有一次导致测试 PDF 打不开。因此 v0.1.13 保留 Zotero 原有的选择行为。被选中的只是文字，不会生成批注，也不会修改 PDF。
+绘制时指针下方的 PDF 文字选中已大幅抑制。插件把指针捕获推迟到兼容性 `mousedown` 派发决策之后，让 `preventDefault()` 能抑制该事件；手势期间还会用局部 `user-select: none` 样式表、取消 `selectstart`、并在 `selectionchange` 时清除程序化选择作为兜底，手势一结束就立刻恢复。个别情况下仍可能出现少量残留选择，但它无害——不会生成批注，也不会修改 PDF。需要 Zotero 正常的文字选择行为时，把工具栏模式留在“关闭”。整个过程不拦截鼠标事件，因此不会影响墨迹渲染，也不会影响 PDF 打开。
 
 其他限制：
 
@@ -66,8 +70,8 @@ npm run verify:package
 3. 文件里只写一行：本仓库 `build` 目录的绝对路径，例如 `D:\PPs\Zotero_Temporary_Ink[plugin]\build`。
 4. 运行 `npm run dev`，然后重启一次 Zotero。之后再重新构建，只需禁用再启用插件；如果改动涉及阅读器生命周期，请重新打开 PDF 标签页。
 
-删除这个代理文件即可卸载开发版本。用到的 Zotero Reader 私有接口记录在 [`docs/zotero-reader-investigation.md`](docs/zotero-reader-investigation.md)，相关代码只能放在 `src/reader/reader-adapter.ts`。
+删除这个代理文件即可卸载开发版本。用到的 Zotero Reader 私有接口记录在 [`docs/zotero-reader-investigation.md`](docs/zotero-reader-investigation.md)，相关代码只能放在 `src/reader/reader-adapter.ts`。功能规划见 [`docs/roadmap.md`](docs/roadmap.md)。
 
 ## 验证状态
 
-v0.1.13 的 XPI 已在 Zotero 9.0.6 中完成安装和绘制测试。工具栏模式、`Ctrl` 快捷键以及多笔画统一淡出都经过用户确认。TypeScript 类型检查、全部 37 项自动化测试、构建和安装包校验也已通过。
+v0.2.0 新增了随模式变化的工具栏图标、快捷调色板（长按或数字键 `1`–`6`）、`[` / `]` 线宽调节和角落提示徽标，用法见上文。v0.1.13 的 XPI 已在 Zotero 9.0.6 中完成安装和绘制测试，工具栏模式、`Ctrl` 快捷键以及多笔画统一淡出都经过用户确认。TypeScript 类型检查和全部 80 项自动化测试通过；v0.2 的手动检查见 `docs/manual-test.md` 第 24–32 项。

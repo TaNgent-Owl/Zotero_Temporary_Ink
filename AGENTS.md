@@ -4,7 +4,7 @@
 
 The plugin source lives in `src/`. Keep Zotero Reader internals inside `src/reader/reader-adapter.ts`; controllers coordinate lifecycle and input, while `src/ink/` owns geometry, stroke state, Canvas rendering, and pointer handling. Toolbar and preference code belongs in `src/ui/` and shared settings in `src/config/`.
 
-Static extension files are kept at the repository root and in `assets/`, `locale/`, and `preferences/`. Automated tests live in `tests/`; investigation notes, architecture decisions, and the manual checklist live in `docs/`. Generated output goes to `build/` and `dist/` and must not be committed.
+Static extension files are kept at the repository root and in `assets/`, `locale/`, and `preferences/`. Automated tests live in `tests/`; investigation notes, architecture decisions, the manual checklist, and code audit reports live in `docs/`. Save each audit as `docs/audit-<version>.md` and read the latest audit before starting a new one. Generated output goes to `build/` and `dist/` and must not be committed.
 
 ## Build and test commands
 

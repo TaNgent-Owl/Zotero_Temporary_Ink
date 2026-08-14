@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.2.0 - 2026-08-14
+
+### Added
+
+- Mode-visible toolbar: the toolbar icon now switches with the OFF / PEN / RECTANGLE mode (default pen icon, pen, rectangle outline), keeps Zotero's native active state, and the hover tooltip shows the current mode.
+- Quick color palette: long-press the toolbar button to open a six-swatch palette; clicking a swatch switches the pen color immediately. Digit keys `1`–`6` switch between the same six presets. The palette highlights the current color, closes on `Esc` or an outside click, and only writes the plugin's own `penColor` preference — never Zotero data. Zotero's own shortcuts and editable fields are never intercepted.
+- Quick width adjust: `[` / `]` step the pen width by 1 px within 1–20 and apply to the next stroke; the preference pane keeps the precise value.
+- Corner hint badge: holding the drawing modifier in OFF mode, or dragging in PEN/RECTANGLE mode, shows a small badge in the reader corner with the tool name, a color dot, and the current width. It is pure display (`pointer-events: none`), disappears on release or after about one second, and leaves no DOM residue.
+- Unified zh-CN / en-US terminology across the locales, README, preference pane, and toolbar tooltips; the README documents every new v0.2 interaction and the modifiers are now correctly described as configurable.
+
+### Fixed
+
+- Suppress PDF text selection while drawing. Pointer capture is now deferred past the compatibility `mousedown` dispatch (first pointermove or a zero-delay fallback), because active capture during `pointerdown` disables `preventDefault()`'s mousedown suppression and lets Zotero's programmatic selection path run. A claimed gesture additionally blocks selection with a scoped `user-select: none !important` stylesheet, cancels `selectstart`, and clears `selectionchange`-visible programmatic selections. All layers are released through the shared `finishGesture()` chokepoint; no mouse-event interception is added, so ink rendering and PDF loading are unaffected. User testing on Zotero 9.0.6 confirms a large reduction; a small residual selection in some cases was accepted as a harmless limitation.
+- Isolate startup failures: preference pane registration, per-open-reader toolbar replay, and the `renderToolbar` handler now fail closed with logging; `bootstrap.js` adds a last-line catch with best-effort cleanup, so a startup failure can no longer disable the whole plugin (audit M1, L3).
+- Mount synthetic toolbars for already-open readers synchronously instead of awaiting attachment, so slow readers can no longer stall `startup()` (audit L2).
+- Cache modifier state in `updateCursor` so OFF-mode pointer moves no longer re-read all eight preferences on every move; event-less calls still recompute (audit L1).
+
+### Verification
+
+- TypeScript typecheck and all 80 automated tests pass; XPI build and package verification pass. Zotero 9.0.6 manual verification for the new interactions is tracked as rows 24–32 of `docs/manual-test.md`; the functional roadmap for future versions lives in `docs/roadmap.md`.
+
 ## 0.1.13 - 2026-08-10
 
 ### Added
